@@ -78,15 +78,14 @@
         import { getFirestore, collection, addDoc, onSnapshot, query, where, getDocs, updateDoc, doc } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore.js";
 
         // CONFIGURAÇÃO DO SEU FIREBASE (COLE SUAS CHAVES AQUI)
-        const firebaseConfig = {
-             const firebaseConfig = {
+       const firebaseConfig = {
   apiKey: "AIzaSyCPXMQfxQ_q8B3MgKK4KK3qDtVD3GDYnhg",
   authDomain: "emissor-2a55a.firebaseapp.com",
   projectId: "emissor-2a55a",
   storageBucket: "emissor-2a55a.firebasestorage.app",
   messagingSenderId: "289980588435",
-  appId: "1:289980588435:web:4588d7ee43bc1ef9ff4866"+
-        };
+  appId: "1:289980588435:web:4588d7ee43bc1ef9ff4866"
+};
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
@@ -196,3 +195,4 @@
 </body>
 
 </html>
+
