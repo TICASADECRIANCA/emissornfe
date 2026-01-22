@@ -73,22 +73,38 @@
             document.getElementById('nfeForm').reset();
         });
 
-        // LISTAR
-        onSnapshot(query(collection(db, "vendas_nfe")), (snap) => {
-            const t = document.getElementById('tabelaVendas'); t.innerHTML = "";
-            snap.forEach(d => {
-                const item = d.data();
-                const btnAction = item.status === "emitido" 
-                    ? `<a href="${item.pdf}" target="_blank" class="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs font-bold">ABRIR PDF</a>`
-                    : `<span class="text-gray-400">Aguardando</span>`;
+        // LISTAR TODAS AS VENDAS (PENDENTES E EMITIDAS)
+onSnapshot(collection(db, "vendas_nfe"), (snap) => {
+    const t = document.getElementById('tabelaVendas'); 
+    t.innerHTML = "";
+    
+    // Ordenar para as mais recentes aparecerem primeiro (opcional)
+    const docs = snap.docs.sort((a, b) => b.data().data - a.data().data);
 
-                t.innerHTML += `<tr class="border-b">
-                    <td class="py-3"><b>${item.cliente}</b></td>
-                    <td>R$ ${item.baseCalculo.toFixed(2)}</td>
-                    <td class="text-center">${btnAction}</td>
-                </tr>`;
-            });
-        });
+    docs.forEach(d => {
+        const item = d.data();
+        
+        // Define o que aparece na coluna de status/ação
+        let acaoHtml = "";
+        if (item.status === "emitido") {
+            acaoHtml = `<a href="${item.pdf}" target="_blank" class="bg-blue-600 text-white px-3 py-1 rounded-md text-xs font-bold hover:bg-blue-800">ABRIR PDF</a>`;
+        } else {
+            acaoHtml = `<span class="bg-yellow-100 text-yellow-700 px-2 py-1 rounded text-xs font-bold uppercase">Pendente</span>`;
+        }
+
+        t.innerHTML += `
+            <tr class="border-b hover:bg-gray-50 transition">
+                <td class="py-4">
+                    <div class="font-bold text-gray-800">${item.cliente}</div>
+                    <div class="text-[10px] text-gray-400">${item.documento}</div>
+                </td>
+                <td class="py-4 text-indigo-600 font-semibold">R$ ${item.baseCalculo.toFixed(2)}</td>
+                <td class="py-4 text-center">
+                    ${acaoHtml}
+                </td>
+            </tr>`;
+    });
+});
 
         // EMITIR
         document.getElementById('btnEmitirMassa').addEventListener('click', async () => {
@@ -135,3 +151,4 @@
     </script>
 </body>
 </html>
+
