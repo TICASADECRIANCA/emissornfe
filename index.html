@@ -2,37 +2,36 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Emissor Massa - CRINUTRIR</title>
+    <title>Emissor Massa - CRINUTRIR (Ajuste Tributário)</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-50 p-4">
     <div class="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div class="bg-white p-6 rounded-xl shadow-md border-t-4 border-blue-600">
-            <h2 class="text-xl font-bold mb-4 italic text-blue-800">Nova Venda - CRINUTRIR</h2>
+            <h2 class="text-xl font-bold mb-4 text-blue-800">Nova Venda (NCM 2106.90.90)</h2>
             <form id="nfeForm" class="space-y-3">
-                <input type="text" id="cliente" placeholder="Razão Social" class="w-full border p-2 rounded shadow-sm" required>
-                <input type="text" id="doc_cliente" placeholder="CPF ou CNPJ (apenas números)" class="w-full border p-2 rounded shadow-sm" required>
-                <input type="text" id="cep_cliente" placeholder="CEP (apenas números)" class="w-full border p-2 rounded shadow-sm" required>
-                <input type="number" step="0.01" id="valorBruto" placeholder="Valor Total R$" class="w-full border p-2 rounded shadow-sm font-bold text-green-700" required>
-                <button type="submit" class="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition">Salvar na Fila</button>
+                <input type="text" id="cliente" placeholder="Razão Social" class="w-full border p-2 rounded" required>
+                <input type="text" id="doc_cliente" placeholder="CPF/CNPJ (só números)" class="w-full border p-2 rounded" required>
+                <input type="text" id="cep_cliente" placeholder="CEP (só números)" class="w-full border p-2 rounded" required>
+                <input type="number" step="0.01" id="valorBruto" placeholder="Valor Total R$ (ex: 30.00)" class="w-full border p-2 rounded font-bold text-green-700" required>
+                <button type="submit" class="w-full bg-blue-600 text-white font-bold py-3 rounded-lg">Salvar na Fila</button>
             </form>
         </div>
 
         <div class="lg:col-span-2 bg-white p-6 rounded-xl shadow-md">
-            <div class="flex justify-between items-center mb-6">
-                <h2 class="text-xl font-bold text-gray-700">Histórico de Notas</h2>
-                <button id="btnEmitirMassa" class="bg-green-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-green-700 shadow">🚀 Emitir Tudo</button>
-            </div>
+            <h2 class="text-xl font-bold mb-6 text-gray-700">Fila de Emissão</h2>
             <table class="w-full text-left text-sm">
                 <thead>
-                    <tr class="border-b text-gray-400 uppercase text-[10px]">
+                    <tr class="border-b text-gray-400 text-[10px]">
                         <th class="py-2">Cliente</th>
-                        <th class="py-2">Base (Reduzida)</th>
-                        <th class="py-2 text-center">Status / PDF</th>
+                        <th class="py-2">Vlr Total</th>
+                        <th class="py-2">Base Reduzida</th>
+                        <th class="py-2 text-center">Status</th>
                     </tr>
                 </thead>
                 <tbody id="tabelaVendas" class="divide-y"></tbody>
             </table>
+            <button id="btnEmitirMassa" class="mt-4 w-full bg-green-600 text-white font-bold py-3 rounded-lg shadow-lg">🚀 Emitir Tudo em Massa</button>
         </div>
     </div>
 
@@ -40,8 +39,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-app.js";
         import { getFirestore, collection, addDoc, onSnapshot, query, where, getDocs, updateDoc, doc } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore.js";
 
-        // --- ATENÇÃO: COLOQUE SUAS CHAVES DO FIREBASE AQUI ---
-         const firebaseConfig = {
+        const firebaseConfig = {
   apiKey: "AIzaSyCPXMQfxQ_q8B3MgKK4KK3qDtVD3GDYnhg",
   authDomain: "emissor-2a55a.firebaseapp.com",
   projectId: "emissor-2a55a",
@@ -55,73 +53,80 @@
         const tokenFocus = "fD3xZpJer34QFZn5joKWqr1Tz09b99Sr";
         const proxy = "https://cors-anywhere.herokuapp.com/";
 
-        // SALVAR NO BANCO
         document.getElementById('nfeForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            console.log("Tentando salvar no Firebase...");
             const v = parseFloat(document.getElementById('valorBruto').value);
             const base = v * 0.8; // Redução 20%
             
-            try {
-                await addDoc(collection(db, "vendas_nfe"), {
-                    cliente: document.getElementById('cliente').value,
-                    documento: document.getElementById('doc_cliente').value.replace(/\D/g, ""),
-                    cep: document.getElementById('cep_cliente').value.replace(/\D/g, ""),
-                    valorBruto: v,
-                    baseCalculo: base,
-                    icms: base * 0.18,
-                    status: "pendente",
-                    dataCriacao: new Date()
-                });
-                document.getElementById('nfeForm').reset();
-                alert("Salvo com sucesso!");
-            } catch (err) { 
-                console.error("Erro no Firebase:", err);
-                alert("Erro ao salvar no banco. Verifique as chaves e regras do Firebase.");
-            }
+            await addDoc(collection(db, "vendas_nfe"), {
+                cliente: document.getElementById('cliente').value,
+                documento: document.getElementById('doc_cliente').value.replace(/\D/g, ""),
+                cep: document.getElementById('cep_cliente').value.replace(/\D/g, ""),
+                valorBruto: v,
+                baseCalculo: base,
+                icms: base * 0.18,
+                status: "pendente"
+            });
+            document.getElementById('nfeForm').reset();
         });
 
-        // LISTAR (Tempo Real)
         onSnapshot(collection(db, "vendas_nfe"), (snap) => {
             const t = document.getElementById('tabelaVendas'); t.innerHTML = "";
             snap.forEach(d => {
                 const item = d.data();
                 const acao = item.status === "emitido" 
-                    ? `<a href="${item.pdf}" target="_blank" class="text-blue-600 font-bold underline">VER PDF</a>`
-                    : `<span class="text-orange-500 font-bold italic">PENDENTE</span>`;
+                    ? `<a href="${item.pdf}" target="_blank" class="text-blue-600 underline">VER PDF</a>`
+                    : `<span class="text-orange-500">PENDENTE</span>`;
 
                 t.innerHTML += `<tr class="border-b">
                     <td class="py-3"><b>${item.cliente}</b></td>
+                    <td>R$ ${item.valorBruto.toFixed(2)}</td>
                     <td>R$ ${item.baseCalculo.toFixed(2)}</td>
                     <td class="text-center">${acao}</td>
                 </tr>`;
             });
         });
 
-        // EMITIR MASSA
         document.getElementById('btnEmitirMassa').addEventListener('click', async () => {
             const snap = await getDocs(query(collection(db, "vendas_nfe"), where("status", "==", "pendente")));
             if(snap.empty) return alert("Nada pendente.");
 
-            alert("Iniciando emissão. Lembre-se de ativar o Proxy!");
-
             for(const d of snap.docs) {
                 const data = d.data();
+                
+                // Cálculo de tributos para a frase da Lei da Transparência (igual ao cupom)
+                const federal = data.valorBruto * 0.1347;
+                const estadual = data.valorBruto * 0.20;
+
                 const nfeBody = {
                     "natureza_operacao": "Venda",
                     "nome_destinatario": data.cliente,
                     "cpf_destinatario": data.documento,
                     "cep_destinatario": data.cep,
-                    "logradouro_destinatario": "Logradouro Padrao",
+                    "logradouro_destinatario": "Rua Nao Informada",
                     "bairro_destinatario": "Bairro Padrao",
                     "municipio_destinatario": "Sao Paulo",
                     "uf_destinatario": "SP",
                     "items": [{
-                        "numero_item": 1, "codigo_produto": "01", "descricao": "Venda Mercadoria", "ncm": "94036000", "cfop": "5102",
-                        "valor_unitario_comercial": data.valorBruto, "quantidade_comercial": 1, "unidade_comercial": "UN",
-                        "icms_situacao_tributaria": "20", "icms_origem": "0", "icms_base_calculo": data.baseCalculo,
-                        "icms_aliquota": 18, "icms_valor": data.icms, "icms_percentual_reducao": 20
-                    }]
+                        "numero_item": 1,
+                        "codigo_produto": "01",
+                        "descricao": "PREPARACOES ALIMENTICIAS", // Referente ao NCM 21069090
+                        "ncm": "21069090",
+                        "cfop": "5102",
+                        "unidade_comercial": "UN",
+                        "quantidade_comercial": 1,
+                        "valor_unitario_comercial": data.valorBruto,
+                        "valor_bruto": data.valorBruto,
+                        "icms_situacao_tributaria": "20",
+                        "icms_origem": "0",
+                        "icms_base_calculo": data.baseCalculo,
+                        "icms_aliquota": 18,
+                        "icms_valor": data.icms,
+                        "icms_percentual_reducao": 20,
+                        "tributo_aliquota_federal": 13.47,
+                        "tributo_aliquota_estadual": 20.0
+                    }],
+                    "informacoes_adicionais_contribuinte": `Valor aprox. tributos R$ ${federal.toFixed(2)} Federal e R$ ${estadual.toFixed(2)} Estadual. Fonte: IBPT`
                 };
 
                 try {
@@ -130,17 +135,13 @@
                         headers: { 'Authorization': 'Basic ' + btoa(tokenFocus + ":"), 'Content-Type': 'application/json' },
                         body: JSON.stringify(nfeBody)
                     });
-
-                    const resData = await res.json();
-                    if(res.ok || res.status === 202) {
-                        await updateDoc(doc(db, "vendas_nfe", d.id), { status: "emitido", pdf: resData.url_danfe });
-                    } else {
-                        console.log("Erro na Focus:", resData);
-                        alert("Erro na Focus: " + resData.mensagem);
+                    const resJson = await res.json();
+                    if(res.ok) {
+                        await updateDoc(doc(db, "vendas_nfe", d.id), { status: "emitido", pdf: resJson.url_danfe });
                     }
-                } catch (e) { console.error("Erro de rede:", e); }
+                } catch (e) { console.error(e); }
             }
-            alert("Processo finalizado!");
+            alert("Processamento concluído!");
         });
     </script>
 </body>
