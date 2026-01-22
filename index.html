@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emissor NF-e - CRI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-8">
+
+    <div class="max-w-4xl mx-auto bg-white p-6 rounded-lg shadow-md">
+        <h1 class="text-2xl font-bold mb-6 text-gray-800">Emissor NF-e - CRI </h1>
+        
+        <form id="nfeForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label class="block text-sm font-medium">Cliente</label>
+                <input type="text" id="cliente" class="w-full border p-2 rounded" placeholder="Nome ou Razão Social" required>
+            </div>
+            <div>
+                <label class="block text-sm font-medium">Valor Bruto (R$)</label>
+                <input type="number" step="0.01" id="valorBruto" class="w-full border p-2 rounded" required>
+            </div>
+            <div>
+                <label class="block text-sm font-medium">% Redução Base de Cálculo</label>
+                <input type="number" id="percReducao" class="w-full border p-2 rounded" value="20">
+            </div>
+            <div>
+                <label class="block text-sm font-medium">% Alíquota ICMS</label>
+                <input type="number" id="aliquotaIcms" class="w-full border p-2 rounded" value="18">
+            </div>
+            
+            <div class="md:col-span-2 bg-blue-50 p-4 rounded mt-4">
+                <p class="text-sm text-blue-800"><strong>Resumo do Cálculo:</strong></p>
+                <p id="resumoCalculo" class="text-lg font-semibold text-blue-900">Base: R$ 0.00 | ICMS: R$ 0.00</p>
+            </div>
+
+            <button type="submit" class="md:col-span-2 bg-green-600 text-white font-bold py-3 rounded hover:bg-green-700 transition">
+                Salvar Venda para Emissão
+            </button>
+        </form>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-app.js";
+        import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore.js";
+
+        // CONFIGURAÇÃO DO SEU FIREBASE (Pegue no Console do Firebase)
+        const firebaseConfig = {
+  apiKey: "AIzaSyCPXMQfxQ_q8B3MgKK4KK3qDtVD3GDYnhg",
+  authDomain: "emissor-2a55a.firebaseapp.com",
+  projectId: "emissor-2a55a",
+  storageBucket: "emissor-2a55a.firebasestorage.app",
+  messagingSenderId: "289980588435",
+  appId: "1:289980588435:web:4588d7ee43bc1ef9ff4866"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // Lógica de Cálculo em Tempo Real
+        const inputs = ['valorBruto', 'percReducao', 'aliquotaIcms'];
+        inputs.forEach(id => {
+            document.getElementById(id).addEventListener('input', calcular);
+        });
+
+        function calcular() {
+            const valorBruto = parseFloat(document.getElementById('valorBruto').value) || 0;
+            const percReducao = parseFloat(document.getElementById('percReducao').value) || 0;
+            const aliquotaIcms = parseFloat(document.getElementById('aliquotaIcms').value) || 0;
+
+            // Fator de redução (Ex: 20% de redução significa que a base é 80% do valor)
+            const fatorBase = (100 - percReducao) / 100;
+            const baseCalculada = valorBruto * fatorBase;
+            const valorIcms = baseCalculada * (aliquotaIcms / 100);
+
+            document.getElementById('resumoCalculo').innerText = 
+                `Base: R$ ${baseCalculada.toFixed(2)} | ICMS: R$ ${valorIcms.toFixed(2)}`;
+            
+            return { baseCalculada, valorIcms };
+        }
+
+        // Salvar no Firebase
+        document.getElementById('nfeForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const dadosCalculados = calcular();
+
+            try {
+                const docRef = await addDoc(collection(db, "vendas_nfe"), {
+                    cliente: document.getElementById('cliente').value,
+                    valorBruto: parseFloat(document.getElementById('valorBruto').value),
+                    baseCalculo: dadosCalculados.baseCalculada,
+                    icms: dadosCalculados.valorIcms,
+                    status: "pendente", // Para emissão em massa depois
+                    data: new Date()
+                });
+                alert("Venda salva com sucesso! ID: " + docRef.id);
+                document.getElementById('nfeForm').reset();
+            } catch (error) {
+                console.error("Erro ao salvar: ", error);
+            }
+        });
+    </script>
+</body>
+</html>
