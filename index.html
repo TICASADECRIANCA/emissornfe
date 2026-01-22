@@ -3,49 +3,94 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Emissor NF-e - CRI</title>
+    <title>Sistema Emissor NF-e Massa</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-100 p-8">
+<body class="bg-gray-50 min-h-screen">
 
-    <div class="max-w-4xl mx-auto bg-white p-6 rounded-lg shadow-md">
-        <h1 class="text-2xl font-bold mb-6 text-gray-800">Emissor NF-e - CRI </h1>
-        
-        <form id="nfeForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-                <label class="block text-sm font-medium">Cliente</label>
-                <input type="text" id="cliente" class="w-full border p-2 rounded" placeholder="Nome ou Razão Social" required>
-            </div>
-            <div>
-                <label class="block text-sm font-medium">Valor Bruto (R$)</label>
-                <input type="number" step="0.01" id="valorBruto" class="w-full border p-2 rounded" required>
-            </div>
-            <div>
-                <label class="block text-sm font-medium">% Redução Base de Cálculo</label>
-                <input type="number" id="percReducao" class="w-full border p-2 rounded" value="20">
-            </div>
-            <div>
-                <label class="block text-sm font-medium">% Alíquota ICMS</label>
-                <input type="number" id="aliquotaIcms" class="w-full border p-2 rounded" value="18">
-            </div>
+    <div class="max-w-5xl mx-auto py-10 px-4">
+        <header class="mb-10 text-center">
+            <h1 class="text-3xl font-extrabold text-gray-900">Emissor de Notas em Massa</h1>
+            <p class="text-gray-600">Gestão com redução automática de base de cálculo</p>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
             
-            <div class="md:col-span-2 bg-blue-50 p-4 rounded mt-4">
-                <p class="text-sm text-blue-800"><strong>Resumo do Cálculo:</strong></p>
-                <p id="resumoCalculo" class="text-lg font-semibold text-blue-900">Base: R$ 0.00 | ICMS: R$ 0.00</p>
+            <div class="lg:col-span-1">
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                    <h2 class="text-lg font-bold mb-4 text-gray-800 border-b pb-2">Nova Venda</h2>
+                    <form id="nfeForm" class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-500 uppercase">Cliente / Razão Social</label>
+                            <input type="text" id="cliente" class="w-full border-gray-300 border p-2 rounded focus:ring-2 focus:ring-indigo-500 outline-none" required>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-500 uppercase">Valor Total do Produto (R$)</label>
+                            <input type="number" step="0.01" id="valorBruto" class="w-full border-gray-300 border p-2 rounded focus:ring-2 focus:ring-indigo-500 outline-none" required>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-500 uppercase">% Redução</label>
+                                <input type="number" id="percReducao" class="w-full border-gray-300 border p-2 rounded" value="20">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-500 uppercase">% ICMS</label>
+                                <input type="number" id="aliquotaIcms" class="w-full border-gray-300 border p-2 rounded" value="18">
+                            </div>
+                        </div>
+                        
+                        <div class="bg-indigo-50 p-3 rounded-lg border border-indigo-100 mt-4">
+                            <p class="text-xs text-indigo-700 font-bold uppercase mb-1">Cálculo Automático:</p>
+                            <div id="resumoCalculo" class="text-sm text-indigo-900">
+                                Base Reduzida: <strong>R$ 0,00</strong><br>
+                                Valor ICMS: <strong>R$ 0,00</strong>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="w-full bg-indigo-600 text-white font-bold py-3 rounded-lg hover:bg-indigo-700 transition shadow-md">
+                            Salvar na Fila
+                        </button>
+                    </form>
+                </div>
             </div>
 
-            <button type="submit" class="md:col-span-2 bg-green-600 text-white font-bold py-3 rounded hover:bg-green-700 transition">
-                Salvar Venda para Emissão
-            </button>
-        </form>
+            <div class="lg:col-span-2">
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                    <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                        <h2 class="text-lg font-bold text-gray-800">Fila de Emissão (Pendentes)</h2>
+                        <button id="btnEmitirMassa" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-bold text-sm shadow transition">
+                            🚀 Emitir Tudo em Massa
+                        </button>
+                    </div>
+                    
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full text-left">
+                            <thead class="bg-gray-50 text-gray-500 text-xs uppercase font-semibold">
+                                <tr>
+                                    <th class="px-6 py-3">Cliente</th>
+                                    <th class="px-6 py-3 text-right">Valor Bruto</th>
+                                    <th class="px-6 py-3 text-right">Base Reduzida</th>
+                                    <th class="px-6 py-3 text-right">ICMS</th>
+                                    <th class="px-6 py-3 text-center">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabelaVendas" class="divide-y divide-gray-100">
+                                </tbody>
+                        </table>
+                        <div id="loader" class="p-10 text-center text-gray-400">Carregando fila...</div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-app.js";
-        import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, onSnapshot, query, where, getDocs, updateDoc, doc } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore.js";
 
-        // CONFIGURAÇÃO DO SEU FIREBASE (Pegue no Console do Firebase)
-        const firebaseConfig = {
+        // CONFIGURAÇÃO DO FIREBASE (SUBSTITUA PELOS SEUS DADOS)
+         const firebaseConfig = {
   apiKey: "AIzaSyCPXMQfxQ_q8B3MgKK4KK3qDtVD3GDYnhg",
   authDomain: "emissor-2a55a.firebaseapp.com",
   projectId: "emissor-2a55a",
@@ -56,49 +101,86 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
+        const vendasColl = collection(db, "vendas_nfe");
 
-        // Lógica de Cálculo em Tempo Real
-        const inputs = ['valorBruto', 'percReducao', 'aliquotaIcms'];
-        inputs.forEach(id => {
-            document.getElementById(id).addEventListener('input', calcular);
-        });
+        // --- LÓGICA DE CÁLCULO ---
+        function realizarCalculo() {
+            const vBruto = parseFloat(document.getElementById('valorBruto').value) || 0;
+            const pReduc = parseFloat(document.getElementById('percReducao').value) || 0;
+            const pIcms = parseFloat(document.getElementById('aliquotaIcms').value) || 0;
 
-        function calcular() {
-            const valorBruto = parseFloat(document.getElementById('valorBruto').value) || 0;
-            const percReducao = parseFloat(document.getElementById('percReducao').value) || 0;
-            const aliquotaIcms = parseFloat(document.getElementById('aliquotaIcms').value) || 0;
+            const baseReduzida = vBruto * ((100 - pReduc) / 100);
+            const valorIcms = baseReduzida * (pIcms / 100);
 
-            // Fator de redução (Ex: 20% de redução significa que a base é 80% do valor)
-            const fatorBase = (100 - percReducao) / 100;
-            const baseCalculada = valorBruto * fatorBase;
-            const valorIcms = baseCalculada * (aliquotaIcms / 100);
-
-            document.getElementById('resumoCalculo').innerText = 
-                `Base: R$ ${baseCalculada.toFixed(2)} | ICMS: R$ ${valorIcms.toFixed(2)}`;
-            
-            return { baseCalculada, valorIcms };
+            document.getElementById('resumoCalculo').innerHTML = `
+                Base Reduzida: <strong>R$ ${baseReduzida.toLocaleString('pt-br', {minimumFractionDigits: 2})}</strong><br>
+                Valor ICMS: <strong>R$ ${valorIcms.toLocaleString('pt-br', {minimumFractionDigits: 2})}</strong>
+            `;
+            return { baseReduzida, valorIcms };
         }
 
-        // Salvar no Firebase
+        ['valorBruto', 'percReducao', 'aliquotaIcms'].forEach(id => {
+            document.getElementById(id).addEventListener('input', realizarCalculo);
+        });
+
+        // --- SALVAR NO FIREBASE ---
         document.getElementById('nfeForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const dadosCalculados = calcular();
-
+            const calc = realizarCalculo();
             try {
-                const docRef = await addDoc(collection(db, "vendas_nfe"), {
+                await addDoc(vendasColl, {
                     cliente: document.getElementById('cliente').value,
                     valorBruto: parseFloat(document.getElementById('valorBruto').value),
-                    baseCalculo: dadosCalculados.baseCalculada,
-                    icms: dadosCalculados.valorIcms,
-                    status: "pendente", // Para emissão em massa depois
+                    baseCalculo: calc.baseReduzida,
+                    icms: calc.valorIcms,
+                    status: "pendente",
                     data: new Date()
                 });
-                alert("Venda salva com sucesso! ID: " + docRef.id);
                 document.getElementById('nfeForm').reset();
-            } catch (error) {
-                console.error("Erro ao salvar: ", error);
+                realizarCalculo();
+            } catch (err) { alert("Erro ao salvar: " + err.message); }
+        });
+
+        // --- LISTAGEM EM TEMPO REAL ---
+        const q = query(vendasColl, where("status", "==", "pendente"));
+        onSnapshot(q, (snapshot) => {
+            const tbody = document.getElementById('tabelaVendas');
+            document.getElementById('loader').classList.add('hidden');
+            tbody.innerHTML = "";
+            snapshot.forEach((dDoc) => {
+                const item = dDoc.data();
+                tbody.innerHTML += `
+                    <tr class="hover:bg-gray-50 transition">
+                        <td class="px-6 py-4 font-semibold text-gray-700">${item.cliente}</td>
+                        <td class="px-6 py-4 text-right">R$ ${item.valorBruto.toFixed(2)}</td>
+                        <td class="px-6 py-4 text-right text-indigo-600 font-bold">R$ ${item.baseCalculo.toFixed(2)}</td>
+                        <td class="px-6 py-4 text-right">R$ ${item.icms.toFixed(2)}</td>
+                        <td class="px-6 py-4 text-center">
+                            <span class="bg-yellow-100 text-yellow-700 text-[10px] px-2 py-1 rounded-full uppercase font-bold">Pendente</span>
+                        </td>
+                    </tr>
+                `;
+            });
+        });
+
+        // --- EMISSÃO EM MASSA (SIMULADA PARA API) ---
+        document.getElementById('btnEmitirMassa').addEventListener('click', async () => {
+            const querySnapshot = await getDocs(q);
+            if (querySnapshot.empty) return alert("Nenhuma nota para emitir!");
+
+            if(confirm(`Deseja emitir ${querySnapshot.size} notas agora?`)) {
+                // Aqui você faria o fetch para sua API de NFe
+                querySnapshot.forEach(async (docSnapshot) => {
+                    // Simulação de sucesso da API
+                    await updateDoc(doc(db, "vendas_nfe", docSnapshot.id), {
+                        status: "emitido",
+                        nfe_numero: Math.floor(Math.random() * 10000)
+                    });
+                });
+                alert("Lote enviado com sucesso!");
             }
         });
+
     </script>
 </body>
 </html>
