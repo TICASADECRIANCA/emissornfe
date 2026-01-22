@@ -2,74 +2,37 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema Emissor CRINUTRIR - Focus NFe</title>
+    <title>Emissor Massa - CRINUTRIR</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-50 min-h-screen p-4 md:p-8">
-
-    <div class="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
-        <div class="lg:col-span-1">
-            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
-                <h2 class="text-xl font-bold mb-6 text-gray-800">Nova Venda</h2>
-                <form id="nfeForm" class="space-y-4">
-                    <div>
-                        <label class="block text-xs font-bold text-gray-400 uppercase mb-1">Cliente</label>
-                        <input type="text" id="cliente" placeholder="Razão Social" class="w-full border-gray-300 border p-2 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" required>
-                    </div>
-                    <div class="grid grid-cols-2 gap-2">
-                        <div>
-                            <label class="block text-xs font-bold text-gray-400 uppercase mb-1">CPF/CNPJ</label>
-                            <input type="text" id="doc_cliente" placeholder="Só números" class="w-full border-gray-300 border p-2 rounded-lg" required>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-gray-400 uppercase mb-1">CEP</label>
-                            <input type="text" id="cep_cliente" placeholder="00000-000" class="w-full border-gray-300 border p-2 rounded-lg" required>
-                        </div>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-gray-400 uppercase mb-1">Valor Total (R$)</label>
-                        <input type="number" step="0.01" id="valorBruto" placeholder="0,00" class="w-full border-gray-300 border p-2 rounded-lg font-bold text-blue-600" required>
-                    </div>
-                    
-                    <div class="bg-blue-50 p-3 rounded-lg border border-blue-100 text-xs text-blue-800">
-                        * Cálculo: Redução de 20% na base e 18% de ICMS automático.
-                    </div>
-
-                    <button type="submit" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 shadow-lg transition-all">
-                        Salvar na Fila
-                    </button>
-                </form>
-            </div>
+<body class="bg-gray-50 p-4">
+    <div class="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="bg-white p-6 rounded-xl shadow-md border-t-4 border-blue-600">
+            <h2 class="text-xl font-bold mb-4 italic text-blue-800">Nova Venda - CRINUTRIR</h2>
+            <form id="nfeForm" class="space-y-3">
+                <input type="text" id="cliente" placeholder="Razão Social" class="w-full border p-2 rounded shadow-sm" required>
+                <input type="text" id="doc_cliente" placeholder="CPF ou CNPJ (apenas números)" class="w-full border p-2 rounded shadow-sm" required>
+                <input type="text" id="cep_cliente" placeholder="CEP (apenas números)" class="w-full border p-2 rounded shadow-sm" required>
+                <input type="number" step="0.01" id="valorBruto" placeholder="Valor Total R$" class="w-full border p-2 rounded shadow-sm font-bold text-green-700" required>
+                <button type="submit" class="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition">Salvar na Fila</button>
+            </form>
         </div>
 
-        <div class="lg:col-span-2">
-            <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-                <div class="p-6 border-b border-gray-100 flex justify-between items-center bg-white">
-                    <h2 class="text-xl font-bold text-gray-800">Histórico e Emissão</h2>
-                    <button id="btnEmitirMassa" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-full font-bold shadow-md transition-all flex items-center gap-2">
-                        🚀 Emitir Notas Pendentes
-                    </button>
-                </div>
-                
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left">
-                        <thead class="bg-gray-50 text-gray-400 text-[10px] uppercase font-bold">
-                            <tr>
-                                <th class="px-6 py-4">Dados do Cliente</th>
-                                <th class="px-6 py-4">Base Reduzida</th>
-                                <th class="px-6 py-4 text-center">Status / Ação</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tabelaVendas" class="divide-y divide-gray-100">
-                            </tbody>
-                    </table>
-                </div>
+        <div class="lg:col-span-2 bg-white p-6 rounded-xl shadow-md">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold text-gray-700">Histórico de Notas</h2>
+                <button id="btnEmitirMassa" class="bg-green-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-green-700 shadow">🚀 Emitir Tudo</button>
             </div>
-            <p class="text-center text-gray-400 text-xs mt-4">
-                Lembre-se de ativar o <a href="https://cors-anywhere.herokuapp.com/corsdemo" target="_blank" class="underline text-blue-500">Proxy Temporário</a> para emitir.
-            </p>
+            <table class="w-full text-left text-sm">
+                <thead>
+                    <tr class="border-b text-gray-400 uppercase text-[10px]">
+                        <th class="py-2">Cliente</th>
+                        <th class="py-2">Base (Reduzida)</th>
+                        <th class="py-2 text-center">Status / PDF</th>
+                    </tr>
+                </thead>
+                <tbody id="tabelaVendas" class="divide-y"></tbody>
+            </table>
         </div>
     </div>
 
@@ -77,28 +40,28 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-app.js";
         import { getFirestore, collection, addDoc, onSnapshot, query, where, getDocs, updateDoc, doc } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore.js";
 
-        // CONFIGURAÇÃO DO SEU FIREBASE (COLE SUAS CHAVES AQUI)
-       const firebaseConfig = {
+        // --- ATENÇÃO: COLOQUE SUAS CHAVES DO FIREBASE AQUI ---
+         const firebaseConfig = {
   apiKey: "AIzaSyCPXMQfxQ_q8B3MgKK4KK3qDtVD3GDYnhg",
   authDomain: "emissor-2a55a.firebaseapp.com",
   projectId: "emissor-2a55a",
   storageBucket: "emissor-2a55a.firebasestorage.app",
   messagingSenderId: "289980588435",
   appId: "1:289980588435:web:4588d7ee43bc1ef9ff4866"
-};
+        };
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const tokenFocus = "fD3xZpJer34QFZn5joKWqr1Tz09b99Sr";
         const proxy = "https://cors-anywhere.herokuapp.com/";
 
-        // SALVAR NO FIREBASE
+        // SALVAR NO BANCO
         document.getElementById('nfeForm').addEventListener('submit', async (e) => {
             e.preventDefault();
+            console.log("Tentando salvar no Firebase...");
             const v = parseFloat(document.getElementById('valorBruto').value);
-            const base = v * 0.8; // Redução de 20%
-            const icms = base * 0.18; // Alíquota 18%
-
+            const base = v * 0.8; // Redução 20%
+            
             try {
                 await addDoc(collection(db, "vendas_nfe"), {
                     cliente: document.getElementById('cliente').value,
@@ -106,47 +69,41 @@
                     cep: document.getElementById('cep_cliente').value.replace(/\D/g, ""),
                     valorBruto: v,
                     baseCalculo: base,
-                    icms: icms,
+                    icms: base * 0.18,
                     status: "pendente",
                     dataCriacao: new Date()
                 });
                 document.getElementById('nfeForm').reset();
-                alert("Venda salva na fila!");
-            } catch (err) { alert("Erro ao salvar: " + err.message); }
+                alert("Salvo com sucesso!");
+            } catch (err) { 
+                console.error("Erro no Firebase:", err);
+                alert("Erro ao salvar no banco. Verifique as chaves e regras do Firebase.");
+            }
         });
 
-        // LISTAR TODAS AS NOTAS (Histórico Completo)
+        // LISTAR (Tempo Real)
         onSnapshot(collection(db, "vendas_nfe"), (snap) => {
-            const tbody = document.getElementById('tabelaVendas');
-            tbody.innerHTML = "";
-            
-            snap.forEach((d) => {
+            const t = document.getElementById('tabelaVendas'); t.innerHTML = "";
+            snap.forEach(d => {
                 const item = d.data();
-                const acaoBtn = item.status === "emitido" 
-                    ? `<a href="${item.pdf_url}" target="_blank" class="bg-blue-100 text-blue-700 px-4 py-1 rounded-full text-xs font-bold hover:bg-blue-200 transition">ABRIR PDF</a>`
-                    : `<span class="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-[10px] font-bold uppercase">Pendente</span>`;
+                const acao = item.status === "emitido" 
+                    ? `<a href="${item.pdf}" target="_blank" class="text-blue-600 font-bold underline">VER PDF</a>`
+                    : `<span class="text-orange-500 font-bold italic">PENDENTE</span>`;
 
-                tbody.innerHTML += `
-                    <tr class="hover:bg-gray-50 transition">
-                        <td class="px-6 py-4">
-                            <div class="font-bold text-gray-800">${item.cliente}</div>
-                            <div class="text-[10px] text-gray-400 font-mono">${item.documento}</div>
-                        </td>
-                        <td class="px-6 py-4 font-bold text-blue-600">R$ ${item.baseCalculo.toFixed(2)}</td>
-                        <td class="px-6 py-4 text-center">${acaoBtn}</td>
-                    </tr>
-                `;
+                t.innerHTML += `<tr class="border-b">
+                    <td class="py-3"><b>${item.cliente}</b></td>
+                    <td>R$ ${item.baseCalculo.toFixed(2)}</td>
+                    <td class="text-center">${acao}</td>
+                </tr>`;
             });
         });
 
-        // EMITIR EM MASSA COM PROXY
+        // EMITIR MASSA
         document.getElementById('btnEmitirMassa').addEventListener('click', async () => {
-            const q = query(collection(db, "vendas_nfe"), where("status", "==", "pendente"));
-            const snap = await getDocs(q);
-            
-            if(snap.empty) return alert("Nenhuma nota pendente para emitir!");
+            const snap = await getDocs(query(collection(db, "vendas_nfe"), where("status", "==", "pendente")));
+            if(snap.empty) return alert("Nada pendente.");
 
-            alert("Iniciando emissão de " + snap.size + " notas. Não feche a aba.");
+            alert("Iniciando emissão. Lembre-se de ativar o Proxy!");
 
             for(const d of snap.docs) {
                 const data = d.data();
@@ -155,44 +112,36 @@
                     "nome_destinatario": data.cliente,
                     "cpf_destinatario": data.documento,
                     "cep_destinatario": data.cep,
-                    "logradouro_destinatario": "Rua Nao Informada",
-                    "bairro_destinatario": "Bairro",
+                    "logradouro_destinatario": "Logradouro Padrao",
+                    "bairro_destinatario": "Bairro Padrao",
                     "municipio_destinatario": "Sao Paulo",
                     "uf_destinatario": "SP",
                     "items": [{
-                        "numero_item": 1, "codigo_produto": "01", "descricao": "Produto de Teste", "ncm": "94036000", "cfop": "5102",
-                        "valor_unitario_comercial": data.valorBruto, "quantidade_comercial": 1,
+                        "numero_item": 1, "codigo_produto": "01", "descricao": "Venda Mercadoria", "ncm": "94036000", "cfop": "5102",
+                        "valor_unitario_comercial": data.valorBruto, "quantidade_comercial": 1, "unidade_comercial": "UN",
                         "icms_situacao_tributaria": "20", "icms_origem": "0", "icms_base_calculo": data.baseCalculo,
                         "icms_aliquota": 18, "icms_valor": data.icms, "icms_percentual_reducao": 20
                     }]
                 };
 
                 try {
-                    const response = await fetch(proxy + `https://homologacao.focusnfe.com.br/v2/nfe?ref=${d.id}`, {
+                    const res = await fetch(proxy + `https://homologacao.focusnfe.com.br/v2/nfe?ref=${d.id}`, {
                         method: 'POST',
-                        headers: { 
-                            'Authorization': 'Basic ' + btoa(tokenFocus + ":"), 
-                            'Content-Type': 'application/json' 
-                        },
+                        headers: { 'Authorization': 'Basic ' + btoa(tokenFocus + ":"), 'Content-Type': 'application/json' },
                         body: JSON.stringify(nfeBody)
                     });
 
-                    const resJson = await response.json();
-
-                    if(response.ok || response.status === 202) {
-                        await updateDoc(doc(db, "vendas_nfe", d.id), { 
-                            status: "emitido",
-                            pdf_url: resJson.url_danfe 
-                        });
+                    const resData = await res.json();
+                    if(res.ok || res.status === 202) {
+                        await updateDoc(doc(db, "vendas_nfe", d.id), { status: "emitido", pdf: resData.url_danfe });
                     } else {
-                        console.error("Erro na Focus:", resJson);
+                        console.log("Erro na Focus:", resData);
+                        alert("Erro na Focus: " + resData.mensagem);
                     }
-                } catch (error) { console.error("Falha de rede:", error); }
+                } catch (e) { console.error("Erro de rede:", e); }
             }
-            alert("Processamento concluído!");
+            alert("Processo finalizado!");
         });
     </script>
 </body>
-
 </html>
-
