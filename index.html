@@ -2,19 +2,19 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Emissor - CRINUTRIR (Ajuste Tributário)</title>
+    <title>Emissor - CRINUTRIR</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-50 p-4">
     <div class="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div class="bg-white p-6 rounded-xl shadow-md border-t-4 border-blue-600">
-            <h2 class="text-xl font-bold mb-4 text-blue-800">CRINUTRIR</h2>
+            <h2 class="text-xl font-bold mb-4 text-blue-800">Crinutrir</h2>
             <form id="nfeForm" class="space-y-3">
                 <input type="text" id="cliente" placeholder="Razão Social" class="w-full border p-2 rounded" required>
                 <input type="text" id="doc_cliente" placeholder="CPF/CNPJ (só números)" class="w-full border p-2 rounded" required>
                 <input type="text" id="cep_cliente" placeholder="CEP (só números)" class="w-full border p-2 rounded" required>
-                <input type="number" step="0.01" id="valorBruto" placeholder="Valor Total" class="w-full border p-2 rounded font-bold text-green-700" required>
-                <button type="submit" class="w-full bg-blue-600 text-white font-bold py-3 rounded-lg">Salvar na Fila</button>
+                <input type="number" step="0.01" id="valorBruto" placeholder="Valor Total R$ (ex: 30.00)" class="w-full border p-2 rounded font-bold text-green-700" required>
+                <button type="submit" class="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700">Salvar na Fila</button>
             </form>
         </div>
 
@@ -22,16 +22,15 @@
             <h2 class="text-xl font-bold mb-6 text-gray-700">Fila de Emissão</h2>
             <table class="w-full text-left text-sm">
                 <thead>
-                    <tr class="border-b text-gray-400 text-[10px]">
+                    <tr class="border-b text-gray-400 text-[10px] uppercase">
                         <th class="py-2">Cliente</th>
-                        <th class="py-2">Vlr Total</th>
-                        <th class="py-2">Base Reduzida</th>
+                        <th class="py-2">Valor Bruto</th>
                         <th class="py-2 text-center">Status</th>
                     </tr>
                 </thead>
                 <tbody id="tabelaVendas" class="divide-y"></tbody>
             </table>
-            <button id="btnEmitirMassa" class="mt-4 w-full bg-green-600 text-white font-bold py-3 rounded-lg shadow-lg">🚀 Emitir Tudo em Massa</button>
+            <button id="btnEmitirMassa" class="mt-4 w-full bg-green-600 text-white font-bold py-3 rounded-lg shadow-lg hover:bg-green-700">🚀 Processar Todas as Notas</button>
         </div>
     </div>
 
@@ -39,7 +38,8 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-app.js";
         import { getFirestore, collection, addDoc, onSnapshot, query, where, getDocs, updateDoc, doc } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore.js";
 
-        const firebaseConfig = {
+        // --- INSIRA SEUS DADOS DO FIREBASE AQUI ---
+          const firebaseConfig = {
   apiKey: "AIzaSyCPXMQfxQ_q8B3MgKK4KK3qDtVD3GDYnhg",
   authDomain: "emissor-2a55a.firebaseapp.com",
   projectId: "emissor-2a55a",
@@ -55,16 +55,19 @@
 
         document.getElementById('nfeForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const v = parseFloat(document.getElementById('valorBruto').value);
-            const base = v * 0.8; // Redução 20%
+            const valorTotal = parseFloat(document.getElementById('valorBruto').value);
             
+            // Cálculos baseados na redução de 79,25% da base (Imagem 7)
+            const baseICMS = valorTotal * (1 - 0.7925); 
+            const valorICMS = baseICMS * 0.20;
+
             await addDoc(collection(db, "vendas_nfe"), {
                 cliente: document.getElementById('cliente').value,
                 documento: document.getElementById('doc_cliente').value.replace(/\D/g, ""),
                 cep: document.getElementById('cep_cliente').value.replace(/\D/g, ""),
-                valorBruto: v,
-                baseCalculo: base,
-                icms: base * 0.18,
+                valorBruto: valorTotal,
+                baseCalculo: baseICMS,
+                icmsValor: valorICMS,
                 status: "pendente"
             });
             document.getElementById('nfeForm').reset();
@@ -75,13 +78,12 @@
             snap.forEach(d => {
                 const item = d.data();
                 const acao = item.status === "emitido" 
-                    ? `<a href="${item.pdf}" target="_blank" class="text-blue-600 underline">VER PDF</a>`
-                    : `<span class="text-orange-500">PENDENTE</span>`;
+                    ? `<a href="${item.pdf}" target="_blank" class="text-blue-600 font-bold underline">VER PDF</a>`
+                    : `<span class="text-orange-500 font-bold italic">PENDENTE</span>`;
 
                 t.innerHTML += `<tr class="border-b">
-                    <td class="py-3"><b>${item.cliente}</b></td>
+                    <td class="py-3 font-medium">${item.cliente}</td>
                     <td>R$ ${item.valorBruto.toFixed(2)}</td>
-                    <td>R$ ${item.baseCalculo.toFixed(2)}</td>
                     <td class="text-center">${acao}</td>
                 </tr>`;
             });
@@ -89,15 +91,11 @@
 
         document.getElementById('btnEmitirMassa').addEventListener('click', async () => {
             const snap = await getDocs(query(collection(db, "vendas_nfe"), where("status", "==", "pendente")));
-            if(snap.empty) return alert("Nada pendente.");
+            if(snap.empty) return alert("Nenhuma nota pendente.");
 
             for(const d of snap.docs) {
                 const data = d.data();
                 
-                // Cálculo de tributos para a frase da Lei da Transparência (igual ao cupom)
-                const federal = data.valorBruto * 0.1347;
-                const estadual = data.valorBruto * 0.20;
-
                 const nfeBody = {
                     "natureza_operacao": "Venda",
                     "nome_destinatario": data.cliente,
@@ -110,23 +108,32 @@
                     "items": [{
                         "numero_item": 1,
                         "codigo_produto": "01",
-                        "descricao": "PREPARACOES ALIMENTICIAS", // Referente ao NCM 21069090
+                        "descricao": "PREPARACOES ALIMENTICIAS",
                         "ncm": "21069090",
                         "cfop": "5102",
                         "unidade_comercial": "UN",
                         "quantidade_comercial": 1,
                         "valor_unitario_comercial": data.valorBruto,
                         "valor_bruto": data.valorBruto,
+                        
+                        // PARÂMETROS FISCAIS CONFORME AS IMAGENS
                         "icms_situacao_tributaria": "20",
                         "icms_origem": "0",
                         "icms_base_calculo": data.baseCalculo,
-                        "icms_aliquota": 18,
-                        "icms_valor": data.icms,
-                        "icms_percentual_reducao": 20,
-                        "tributo_aliquota_federal": 13.47,
-                        "tributo_aliquota_estadual": 20.0
+                        "icms_aliquota": 20, // Conforme Imagem 7
+                        "icms_valor": data.icmsValor,
+                        "icms_percentual_reducao": 79.25, // Conforme Imagem 7
+                        
+                        "pis_situacao_tributaria": "01",
+                        "pis_aliquota": 0.65, // Conforme Imagem 7
+                        
+                        "cofins_situacao_tributaria": "01",
+                        "cofins_aliquota": 3, // Conforme Imagem 7
+                        
+                        "tributo_aliquota_federal": 13.45, // Conforme Imagem 7
+                        "tributo_aliquota_estadual": 20.00 // Conforme Imagem 7
                     }],
-                    "informacoes_adicionais_contribuinte": `Valor aprox. tributos R$ ${federal.toFixed(2)} Federal e R$ ${estadual.toFixed(2)} Estadual. Fonte: IBPT`
+                    "informacoes_adicionais_contribuinte": `Val aprox tributos R$ ${(data.valorBruto * 0.1345).toFixed(2)} Fed e R$ ${(data.valorBruto * 0.20).toFixed(2)} Est. Fonte: IBPT`
                 };
 
                 try {
@@ -138,12 +145,13 @@
                     const resJson = await res.json();
                     if(res.ok) {
                         await updateDoc(doc(db, "vendas_nfe", d.id), { status: "emitido", pdf: resJson.url_danfe });
+                    } else {
+                        console.error("Erro na Focus:", resJson);
                     }
-                } catch (e) { console.error(e); }
+                } catch (e) { console.error("Erro de rede:", e); }
             }
-            alert("Processamento concluído!");
+            alert("Processo finalizado!");
         });
     </script>
 </body>
 </html>
-
