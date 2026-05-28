@@ -1,1497 +1,945 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Emissor NF-e - CRINUTRIR</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
-    <!-- SheetJS para leitura de XLS/XLSX -->
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-        * { font-family: 'Inter', sans-serif; }
-        .tab-active   { border-bottom: 3px solid #2563eb; color: #2563eb; font-weight: 600; }
-        .tab-inactive { border-bottom: 3px solid transparent; color: #6b7280; }
-        .st-pendente    { background:#fef3c7; color:#d97706; }
-        .st-emitido     { background:#d1fae5; color:#059669; }
-        .st-erro        { background:#fee2e2; color:#dc2626; }
-        .st-processando { background:#dbeafe; color:#2563eb; }
-        .preview-ok  { background:#f0fdf4; }
-        .preview-err { background:#fff5f5; border-left:3px solid #f87171; }
-        textarea { font-family:'Courier New',monospace; font-size:12px; }
-        #toastContainer { position:fixed; top:20px; right:20px; z-index:9999; display:flex; flex-direction:column; gap:8px; }
-        .toast { padding:12px 18px; border-radius:8px; color:#fff; font-size:14px; font-weight:500;
-            box-shadow:0 4px 12px rgba(0,0,0,.15); animation:slideIn .3s ease; min-width:280px; }
-        .toast-success{background:#059669;} .toast-error{background:#dc2626;}
-        .toast-info{background:#2563eb;}    .toast-warn{background:#d97706;}
-        @keyframes slideIn { from{opacity:0;transform:translateX(40px)} to{opacity:1;transform:translateX(0)} }
-        .drag-active { border-color:#2563eb!important; background:#eff6ff!important; }
-        .progress-bar { transition:width .4s ease; }
-        .fiscal-box { background:linear-gradient(135deg,#eff6ff,#dbeafe); border:1px solid #bfdbfe; }
-        .upload-zone { border:2px dashed #d1d5db; transition:all .2s; }
-        .upload-zone:hover { border-color:#2563eb; background:#f8faff; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Emissor NF-e · CRINUTRIR</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        ink:    { DEFAULT: '#171a17', soft: '#3a3f3a', mute: '#6b716a' },
+        paper:  { DEFAULT: '#f6f4ee', card: '#fffdf8', edge: '#e7e3d8' },
+        moss:   { 50:'#edf7f1',100:'#d3ecdd',300:'#7fc99e',500:'#1f9d63',600:'#157a4c',700:'#0f5f3b',800:'#0b4a2e' },
+        clay:   { 50:'#fdf3ec',100:'#fae0cf',500:'#d97b3f',600:'#bd5f29',700:'#94481f' },
+        rust:   { 50:'#fdeeec',100:'#f8d3cd',500:'#d34a38',600:'#b3382a' },
+        sky2:   { 50:'#eef4f6',100:'#d3e4ea',500:'#3a7c93',600:'#2c6072',700:'#234c5a' },
+      },
+      fontFamily: {
+        display: ['"Bricolage Grotesque"','sans-serif'],
+        sans: ['"IBM Plex Sans"','sans-serif'],
+        mono: ['"IBM Plex Mono"','monospace'],
+      },
+      boxShadow: {
+        soft: '0 1px 2px rgba(23,26,23,.04), 0 8px 24px -12px rgba(23,26,23,.12)',
+        lift: '0 2px 4px rgba(23,26,23,.05), 0 20px 40px -16px rgba(23,26,23,.22)',
+      }
+    }
+  }
+}
+</script>
+<style>
+  *{font-family:'IBM Plex Sans',sans-serif;}
+  body{background:#f6f4ee;background-image:radial-gradient(circle at 12% 18%,rgba(31,157,99,.05),transparent 42%),radial-gradient(circle at 88% 8%,rgba(58,124,147,.05),transparent 38%);}
+  .font-display{font-family:'Bricolage Grotesque',sans-serif;letter-spacing:-.01em;}
+  .font-mono,.tabnum{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;}
+  .tab-on{color:#0f5f3b;font-weight:600;}
+  .tab-on .tabline{transform:scaleX(1);}
+  .tab-off{color:#6b716a;}
+  .tabline{display:block;height:2px;background:#1f9d63;border-radius:2px;transform:scaleX(0);transform-origin:left;transition:transform .25s ease;margin-top:.55rem;}
+  .st-pendente{background:#fae0cf;color:#94481f;}
+  .st-emitido{background:#d3ecdd;color:#0f5f3b;}
+  .st-erro{background:#f8d3cd;color:#b3382a;}
+  .st-processando{background:#d3e4ea;color:#234c5a;}
+  .preview-ok{background:#fbfdfb;}
+  .preview-err{background:#fdf6f5;border-left:3px solid #d34a38;}
+  textarea{font-family:'IBM Plex Mono',monospace;font-size:12.5px;}
+  #toastContainer{position:fixed;top:18px;right:18px;z-index:9999;display:flex;flex-direction:column;gap:8px;}
+  .toast{padding:13px 18px;border-radius:12px;color:#fff;font-size:13.5px;font-weight:500;box-shadow:0 12px 30px -10px rgba(0,0,0,.4);animation:slideIn .35s cubic-bezier(.2,.9,.3,1);min-width:280px;backdrop-filter:blur(4px);}
+  .toast-success{background:#157a4c;} .toast-error{background:#b3382a;}
+  .toast-info{background:#2c6072;}   .toast-warn{background:#bd5f29;}
+  @keyframes slideIn{from{opacity:0;transform:translateX(50px) scale(.96)}to{opacity:1;transform:translateX(0) scale(1)}}
+  .drag-active{border-color:#1f9d63!important;background:#edf7f1!important;}
+  .progress-bar{transition:width .45s cubic-bezier(.4,0,.2,1);}
+  .upload-zone{border:2px dashed #d8d3c5;transition:all .2s;}
+  .upload-zone:hover{border-color:#1f9d63;background:#fbfdfb;}
+  .card{background:#fffdf8;border:1px solid #e7e3d8;box-shadow:0 1px 2px rgba(23,26,23,.04),0 8px 24px -14px rgba(23,26,23,.14);}
+  .fade-up{animation:fadeUp .5s ease both;}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+  .stat{background:linear-gradient(160deg,#fffdf8,#f6f4ee);}
+  ::-webkit-scrollbar{height:9px;width:9px;}
+  ::-webkit-scrollbar-thumb{background:#d8d3c5;border-radius:9px;}
+  .switch{width:42px;height:23px;border-radius:99px;background:#cfd8d2;position:relative;transition:.25s;cursor:pointer;}
+  .switch.on{background:#157a4c;}
+  .switch .knob{position:absolute;top:2px;left:2px;width:19px;height:19px;border-radius:99px;background:#fff;transition:.25s;box-shadow:0 1px 3px rgba(0,0,0,.3);}
+  .switch.on .knob{left:21px;}
+</style>
 </head>
-<body class="bg-slate-100 min-h-screen">
+<body class="min-h-screen text-ink">
 
 <div id="toastContainer"></div>
 
-<!-- HEADER -->
-<header class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-40">
-    <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-        <div class="flex items-center gap-3">
-            <div class="bg-blue-700 text-white rounded-xl p-2.5 shadow">
-                <i class="fas fa-file-invoice text-xl"></i>
-            </div>
-            <div>
-                <h1 class="font-bold text-gray-800 text-lg leading-tight">CRINUTRIR LTDA</h1>
-                <p class="text-xs text-gray-400">CNPJ 63.136.596/0001-71 · IE 000072886170 · Fortaleza/CE</p>
-            </div>
-        </div>
-        <div class="flex items-center gap-3">
-            <div id="statusConexao" class="flex items-center gap-1.5 text-xs bg-gray-100 px-3 py-1.5 rounded-full">
-                <span class="w-2 h-2 bg-gray-300 rounded-full animate-pulse" id="dotConexao"></span>
-                <span id="txtConexao">Conectando…</span>
-            </div>
-            <div id="badgeTotal" class="hidden bg-blue-600 text-white text-xs font-bold px-3 py-1.5 rounded-full">
-                <span id="qtdPendente">0</span> pendentes
-            </div>
-        </div>
+<!-- ───────────────── HEADER ───────────────── -->
+<header class="sticky top-0 z-40 bg-paper-card/85 backdrop-blur-md border-b border-paper-edge">
+  <div class="max-w-7xl mx-auto px-5 py-3.5 flex items-center justify-between gap-4">
+    <div class="flex items-center gap-3.5">
+      <div class="bg-ink text-paper-card rounded-2xl w-11 h-11 grid place-items-center shadow-lift">
+        <i class="fas fa-file-invoice text-lg"></i>
+      </div>
+      <div>
+        <h1 class="font-display font-extrabold text-ink text-[19px] leading-none">CRINUTRIR <span class="text-moss-600">LTDA</span></h1>
+        <p class="text-[11px] text-ink-mute mt-1 font-mono">CNPJ 63.136.596/0001-71 · IE 000072886170 · Fortaleza/CE</p>
+      </div>
     </div>
+    <div class="flex items-center gap-3">
+      <!-- Ambiente toggle -->
+      <div class="flex items-center gap-2.5 bg-paper rounded-full pl-3 pr-1.5 py-1 border border-paper-edge">
+        <span id="ambLabel" class="text-[11px] font-semibold text-clay-600">HOMOLOGAÇÃO</span>
+        <div id="ambSwitch" class="switch" onclick="toggleAmbiente()"><span class="knob"></span></div>
+      </div>
+      <div id="statusConexao" class="flex items-center gap-2 text-[11px] bg-paper px-3 py-1.5 rounded-full border border-paper-edge font-medium">
+        <span class="w-2 h-2 bg-gray-300 rounded-full animate-pulse" id="dotConexao"></span>
+        <span id="txtConexao" class="text-ink-soft">Conectando…</span>
+      </div>
+      <div id="badgeTotal" class="hidden bg-moss-600 text-white text-[11px] font-bold px-3 py-1.5 rounded-full">
+        <span id="qtdPendente">0</span> pendentes
+      </div>
+    </div>
+  </div>
 </header>
 
-<!-- TABS -->
-<div class="bg-white border-b border-gray-200 sticky top-14 z-30 shadow-sm">
-    <div class="max-w-7xl mx-auto px-4 flex gap-1">
-        <button onclick="switchTab('importar')" id="tab-importar" class="tab-active py-3.5 px-4 text-sm transition-all flex items-center gap-2">
-            <i class="fas fa-file-import"></i> Importar Planilha
-        </button>
-        <button onclick="switchTab('colar')" id="tab-colar" class="tab-inactive py-3.5 px-4 text-sm transition-all flex items-center gap-2">
-            <i class="fas fa-clipboard-list"></i> Colar / Texto
-        </button>
-        <button onclick="switchTab('manual')" id="tab-manual" class="tab-inactive py-3.5 px-4 text-sm transition-all flex items-center gap-2">
-            <i class="fas fa-pen-to-square"></i> Manual
-        </button>
-        <button onclick="switchTab('fila')" id="tab-fila" class="tab-inactive py-3.5 px-4 text-sm transition-all flex items-center gap-2">
-            <i class="fas fa-list-check"></i> Fila
-            <span id="badgeFila" class="hidden bg-orange-500 text-white text-xs rounded-full px-1.5">0</span>
-        </button>
-        <button onclick="switchTab('historico')" id="tab-historico" class="tab-inactive py-3.5 px-4 text-sm transition-all flex items-center gap-2">
-            <i class="fas fa-clock-rotate-left"></i> Histórico
-        </button>
-    </div>
+<!-- ───────────────── TABS ───────────────── -->
+<div class="sticky top-[68px] z-30 bg-paper-card/80 backdrop-blur-md border-b border-paper-edge">
+  <div class="max-w-7xl mx-auto px-5 flex gap-6 text-sm overflow-x-auto">
+    <button onclick="switchTab('importar')" id="tab-importar" class="tab-on py-3.5 whitespace-nowrap flex flex-col">
+      <span class="flex items-center gap-2"><i class="fas fa-file-import text-[13px]"></i> Importar Planilha</span><span class="tabline"></span>
+    </button>
+    <button onclick="switchTab('colar')" id="tab-colar" class="tab-off py-3.5 whitespace-nowrap flex flex-col">
+      <span class="flex items-center gap-2"><i class="fas fa-clipboard-list text-[13px]"></i> Colar / Texto</span><span class="tabline"></span>
+    </button>
+    <button onclick="switchTab('manual')" id="tab-manual" class="tab-off py-3.5 whitespace-nowrap flex flex-col">
+      <span class="flex items-center gap-2"><i class="fas fa-pen-to-square text-[13px]"></i> Manual</span><span class="tabline"></span>
+    </button>
+    <button onclick="switchTab('fila')" id="tab-fila" class="tab-off py-3.5 whitespace-nowrap flex flex-col">
+      <span class="flex items-center gap-2"><i class="fas fa-list-check text-[13px]"></i> Fila <span id="badgeFila" class="hidden bg-clay-500 text-white text-[10px] rounded-full px-1.5 py-px">0</span></span><span class="tabline"></span>
+    </button>
+    <button onclick="switchTab('historico')" id="tab-historico" class="tab-off py-3.5 whitespace-nowrap flex flex-col">
+      <span class="flex items-center gap-2"><i class="fas fa-clock-rotate-left text-[13px]"></i> Histórico</span><span class="tabline"></span>
+    </button>
+  </div>
 </div>
 
-<div class="max-w-7xl mx-auto px-4 py-6 space-y-6">
+<div class="max-w-7xl mx-auto px-5 py-7 space-y-6">
 
-<!-- ═══════════════════════════════════════════════════
-     TAB: IMPORTAR PLANILHA XLS/XLSX
-═══════════════════════════════════════════════════ -->
-<div id="panel-importar" class="tab-panel">
+<!-- ════════════ TAB IMPORTAR ════════════ -->
+<div id="panel-importar" class="tab-panel fade-up">
 
-    <!-- Info fiscal fixa -->
-    <div class="fiscal-box rounded-xl p-4 mb-5 grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3">
-        <div class="text-center">
-            <p class="text-xs text-blue-500 font-medium">Produto</p>
-            <p class="text-sm font-bold text-blue-800">Plano Refeição</p>
+  <!-- Faixa fiscal -->
+  <div class="card rounded-2xl p-1 mb-6 overflow-hidden">
+    <div class="flex items-center gap-2 px-4 pt-3 pb-2">
+      <i class="fas fa-receipt text-moss-600 text-xs"></i>
+      <span class="text-[11px] font-semibold tracking-wide text-ink-mute uppercase">Parâmetros fiscais da NFS-e (serviço · ISS)</span>
+    </div>
+    <div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-6 divide-x divide-paper-edge border-t border-paper-edge">
+      <div class="px-3 py-3 text-center"><p class="text-[10px] text-ink-mute uppercase tracking-wide">Serviço</p><p class="text-[13px] font-bold text-ink mt-0.5">Plano nutricional</p></div>
+      <div class="px-3 py-3 text-center"><p class="text-[10px] text-ink-mute uppercase tracking-wide">Documento</p><p class="text-[13px] font-bold text-ink mt-0.5">NFS-e</p></div>
+      <div class="px-3 py-3 text-center"><p class="text-[10px] text-ink-mute uppercase tracking-wide">Cód. trib. nac.</p><p class="text-[13px] font-bold font-mono text-ink mt-0.5" id="fx_ctrib">010701</p></div>
+      <div class="px-3 py-3 text-center"><p class="text-[10px] text-ink-mute uppercase tracking-wide">Alíq. ISS</p><p class="text-[13px] font-bold text-ink mt-0.5" id="fx_iss">5%</p></div>
+      <div class="px-3 py-3 text-center"><p class="text-[10px] text-ink-mute uppercase tracking-wide">Município</p><p class="text-[13px] font-bold text-ink mt-0.5">Fortaleza/CE</p></div>
+      <div class="px-3 py-3 text-center"><p class="text-[10px] text-ink-mute uppercase tracking-wide">ISS retido</p><p class="text-[13px] font-bold text-ink mt-0.5">Não</p></div>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+    <!-- UPLOAD -->
+    <div class="card rounded-2xl p-6">
+      <h2 class="font-display text-[17px] font-bold text-ink mb-1 flex items-center gap-2.5"><i class="fas fa-file-excel text-moss-500"></i> Importar planilha do sistema de gestão</h2>
+      <p class="text-xs text-ink-mute mb-5">Arraste ou selecione o arquivo <strong>.xls / .xlsx</strong> exportado (mesmo formato da planilha "CRI Recebido").</p>
+
+      <label for="fileXLS" id="dropZoneXLS" class="upload-zone rounded-2xl p-9 flex flex-col items-center justify-center cursor-pointer gap-3">
+        <i class="fas fa-cloud-arrow-up text-4xl text-moss-300"></i>
+        <div class="text-center"><p class="font-semibold text-ink-soft">Arraste o arquivo aqui</p><p class="text-xs text-ink-mute mt-1">ou clique para selecionar</p></div>
+        <span class="bg-ink text-paper-card text-xs font-semibold px-4 py-2 rounded-xl">Selecionar arquivo</span>
+        <input type="file" id="fileXLS" accept=".xls,.xlsx" class="hidden" onchange="lerXLS(this)">
+      </label>
+
+      <div class="mt-5 bg-clay-50 border border-clay-100 rounded-2xl p-4">
+        <p class="text-xs font-bold text-clay-700 mb-3"><i class="fas fa-table-columns mr-1"></i> Colunas lidas da planilha:</p>
+        <div class="grid grid-cols-2 gap-1 text-xs text-clay-700">
+          <div class="flex gap-1.5"><span class="text-clay-500">→</span><span><strong>Sacado</strong> → cliente</span></div>
+          <div class="flex gap-1.5"><span class="text-clay-500">→</span><span><strong>Tipo</strong> → PF/PJ</span></div>
+          <div class="flex gap-1.5"><span class="text-clay-500">→</span><span><strong>Valor receb.</strong> → valor</span></div>
+          <div class="flex gap-1.5"><span class="text-clay-500">→</span><span><strong>Descrição</strong> → produto</span></div>
+          <div class="flex gap-1.5"><span class="text-clay-500">→</span><span><strong>Situação NFSe</strong> → filtro</span></div>
+          <div class="flex gap-1.5"><span class="text-clay-500">→</span><span><strong>Competência</strong> → referência</span></div>
         </div>
-        <div class="text-center">
-            <p class="text-xs text-blue-500 font-medium">NCM</p>
-            <p class="text-sm font-bold text-blue-800">2106.90.90</p>
+        <div class="mt-3 bg-clay-100/60 rounded-xl p-2.5 text-xs text-clay-700">
+          <i class="fas fa-circle-info mr-1"></i> A planilha não traz CPF — o sistema pede confirmação antes de emitir. CEP padrão Fortaleza/CE: <strong>60135-215</strong>.
         </div>
-        <div class="text-center">
-            <p class="text-xs text-blue-500 font-medium">CFOP</p>
-            <p class="text-sm font-bold text-blue-800">5102</p>
-        </div>
-        <div class="text-center">
-            <p class="text-xs text-blue-500 font-medium">CST ICMS</p>
-            <p class="text-sm font-bold text-blue-800">020</p>
-        </div>
-        <div class="text-center">
-            <p class="text-xs text-blue-500 font-medium">Red. Base ICMS</p>
-            <p class="text-sm font-bold text-blue-800">79,25%</p>
-        </div>
-        <div class="text-center">
-            <p class="text-xs text-blue-500 font-medium">Alíq. ICMS</p>
-            <p class="text-sm font-bold text-blue-800">20%</p>
-        </div>
-        <div class="text-center">
-            <p class="text-xs text-blue-500 font-medium">PIS / COFINS</p>
-            <p class="text-sm font-bold text-blue-800">0,65% / 3%</p>
-        </div>
-        <div class="text-center">
-            <p class="text-xs text-blue-500 font-medium">Trib. Fed/Est</p>
-            <p class="text-sm font-bold text-blue-800">13,45% / 20%</p>
-        </div>
+      </div>
+
+      <button onclick="downloadModeloXLS()" class="mt-3 w-full bg-paper hover:bg-paper-edge text-ink-soft text-xs font-semibold py-2.5 rounded-xl flex items-center justify-center gap-2 transition border border-paper-edge">
+        <i class="fas fa-download text-moss-500"></i> Baixar modelo de planilha
+      </button>
     </div>
 
-    <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
-
-        <!-- UPLOAD XLS -->
-        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-            <h2 class="text-base font-bold text-gray-700 mb-1 flex items-center gap-2">
-                <i class="fas fa-file-excel text-green-600"></i> Importar Planilha do Sistema de Gestão
-            </h2>
-            <p class="text-xs text-gray-400 mb-5">Arraste ou selecione o arquivo <strong>.xls / .xlsx</strong> exportado do sistema (mesmo formato da planilha "CRI Recebido")</p>
-
-            <!-- Drop zone -->
-            <label for="fileXLS" id="dropZoneXLS" class="upload-zone rounded-xl p-8 flex flex-col items-center justify-center cursor-pointer gap-3 block">
-                <i class="fas fa-cloud-arrow-up text-4xl text-blue-300"></i>
-                <div class="text-center">
-                    <p class="font-semibold text-gray-600">Arraste o arquivo aqui</p>
-                    <p class="text-xs text-gray-400 mt-1">ou clique para selecionar</p>
-                </div>
-                <span class="bg-blue-600 text-white text-xs font-bold px-4 py-2 rounded-lg">Selecionar Arquivo</span>
-                <input type="file" id="fileXLS" accept=".xls,.xlsx" class="hidden" onchange="lerXLS(this)">
-            </label>
-
-            <!-- Mapeamento de colunas -->
-            <div class="mt-5 bg-amber-50 border border-amber-200 rounded-xl p-4">
-                <p class="text-xs font-bold text-amber-700 mb-3"><i class="fas fa-table-columns mr-1"></i> Colunas Lidas da Planilha:</p>
-                <div class="grid grid-cols-2 gap-1 text-xs text-amber-800">
-                    <div class="flex gap-1"><span class="font-bold w-5">→</span><span><strong>Sacado</strong> → Nome do cliente</span></div>
-                    <div class="flex gap-1"><span class="font-bold w-5">→</span><span><strong>Tipo</strong> → PF / PJ</span></div>
-                    <div class="flex gap-1"><span class="font-bold w-5">→</span><span><strong>Valor receb.</strong> → Valor da NF-e</span></div>
-                    <div class="flex gap-1"><span class="font-bold w-5">→</span><span><strong>Descrição</strong> → Produto</span></div>
-                    <div class="flex gap-1"><span class="font-bold w-5">→</span><span><strong>Situação NFSe</strong> → Filtro (Não emitida)</span></div>
-                    <div class="flex gap-1"><span class="font-bold w-5">→</span><span><strong>Titular</strong> → Unidade emissora</span></div>
-                    <div class="flex gap-1"><span class="font-bold w-5">→</span><span><strong>Competência</strong> → Referência</span></div>
-                    <div class="flex gap-1"><span class="font-bold w-5">→</span><span><strong>Responsável fin.</strong> → Pagador</span></div>
-                </div>
-                <div class="mt-3 bg-amber-100 rounded-lg p-2 text-xs text-amber-700">
-                    <i class="fas fa-circle-info mr-1"></i>
-                    <strong>CPF/CNPJ:</strong> Como a planilha não contém CPF, o sistema solicitará confirmação ou você pode adicionar manualmente antes de emitir.
-                    O CEP padrão para Fortaleza/CE é <strong>60135-215</strong> (endereço da CRINUTRIR — ajuste por cliente se necessário).
-                </div>
-            </div>
-
-            <button onclick="downloadModeloXLS()" class="mt-3 w-full bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs font-semibold py-2 rounded-lg flex items-center justify-center gap-2 transition-colors">
-                <i class="fas fa-download text-green-600"></i> Baixar Modelo de Planilha
-            </button>
+    <!-- PREVIEW -->
+    <div class="card rounded-2xl p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="font-display text-[17px] font-bold text-ink flex items-center gap-2.5"><i class="fas fa-table-list text-sky2-500"></i> Preview dos pedidos</h2>
+        <div id="resumoXLS" class="hidden flex gap-1.5 text-[11px]">
+          <span class="bg-moss-50 text-moss-700 px-2 py-1 rounded-full font-semibold"><i class="fas fa-check mr-1"></i><span id="xls_ok">0</span></span>
+          <span class="bg-clay-50 text-clay-700 px-2 py-1 rounded-full font-semibold"><i class="fas fa-triangle-exclamation mr-1"></i><span id="xls_sem_cpf">0</span></span>
+          <span class="bg-rust-50 text-rust-600 px-2 py-1 rounded-full font-semibold"><i class="fas fa-xmark mr-1"></i><span id="xls_err">0</span></span>
         </div>
+      </div>
 
-        <!-- PREVIEW XLS -->
-        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-            <div class="flex items-center justify-between mb-4">
-                <h2 class="text-base font-bold text-gray-700 flex items-center gap-2">
-                    <i class="fas fa-table-list text-blue-600"></i> Preview dos Pedidos
-                </h2>
-                <div id="resumoXLS" class="hidden flex gap-2 text-xs">
-                    <span class="bg-green-100 text-green-700 px-2 py-1 rounded-full font-semibold"><i class="fas fa-check mr-1"></i><span id="xls_ok">0</span> válidos</span>
-                    <span class="bg-orange-100 text-orange-700 px-2 py-1 rounded-full font-semibold"><i class="fas fa-triangle-exclamation mr-1"></i><span id="xls_sem_cpf">0</span> sem CPF</span>
-                    <span class="bg-red-100 text-red-700 px-2 py-1 rounded-full font-semibold"><i class="fas fa-xmark mr-1"></i><span id="xls_err">0</span> erros</span>
-                </div>
-            </div>
+      <div id="xlsVazio" class="text-center py-16 text-ink-mute/50">
+        <i class="fas fa-file-circle-question text-5xl mb-3 block"></i><p class="text-sm">Faça o upload da planilha para visualizar</p>
+      </div>
 
-            <div id="xlsVazio" class="text-center py-16 text-gray-300">
-                <i class="fas fa-file-circle-question text-5xl mb-3 block"></i>
-                <p class="text-sm">Faça o upload da planilha para visualizar os pedidos</p>
-            </div>
-
-            <div id="xlsPreviewWrap" class="hidden">
-                <div class="overflow-auto max-h-72 rounded-lg border border-gray-100">
-                    <table class="w-full text-xs">
-                        <thead class="bg-gray-50 sticky top-0">
-                            <tr class="text-gray-400 uppercase text-[10px]">
-                                <th class="px-2 py-2">#</th>
-                                <th class="px-2 py-2 text-left">Sacado / Nome</th>
-                                <th class="px-2 py-2">Tipo</th>
-                                <th class="px-2 py-2 text-right">Valor</th>
-                                <th class="px-2 py-2">CPF/CNPJ</th>
-                                <th class="px-2 py-2">Competência</th>
-                                <th class="px-2 py-2 text-center">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody id="xlsPreviewBody" class="divide-y divide-gray-50"></tbody>
-                    </table>
-                </div>
-
-                <!-- Resumo fiscal -->
-                <div class="mt-4 grid grid-cols-2 gap-3">
-                    <div class="bg-green-50 rounded-xl p-3 text-center border border-green-100">
-                        <p class="text-xs text-green-600 font-medium">Total a Faturar</p>
-                        <p class="text-2xl font-bold text-green-700" id="xlsTotalValor">R$ 0,00</p>
-                    </div>
-                    <div class="bg-blue-50 rounded-xl p-3 text-center border border-blue-100">
-                        <p class="text-xs text-blue-600 font-medium">ICMS Total (20% s/ base red.)</p>
-                        <p class="text-2xl font-bold text-blue-700" id="xlsTotalICMS">R$ 0,00</p>
-                    </div>
-                    <div class="bg-purple-50 rounded-xl p-3 text-center border border-purple-100">
-                        <p class="text-xs text-purple-600 font-medium">PIS Total (0,65%)</p>
-                        <p class="text-lg font-bold text-purple-700" id="xlsTotalPIS">R$ 0,00</p>
-                    </div>
-                    <div class="bg-orange-50 rounded-xl p-3 text-center border border-orange-100">
-                        <p class="text-xs text-orange-600 font-medium">COFINS Total (3%)</p>
-                        <p class="text-lg font-bold text-orange-700" id="xlsTotalCOFINS">R$ 0,00</p>
-                    </div>
-                </div>
-
-                <!-- Aviso CPF -->
-                <div id="avisoCpf" class="hidden mt-3 bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-700">
-                    <i class="fas fa-triangle-exclamation mr-1"></i>
-                    <strong>Atenção:</strong> Alguns pedidos estão sem CPF/CNPJ. Você pode importar para a fila e preencher antes de emitir, ou editar abaixo.
-                    <div id="cpfEditorWrap" class="mt-3 space-y-2" id="cpfEditorWrap"></div>
-                </div>
-
-                <div class="flex gap-2 mt-4">
-                    <button onclick="importarXLSFila()" id="btnXLSFila" class="flex-1 bg-green-600 text-white font-bold py-3 rounded-xl hover:bg-green-700 flex items-center justify-center gap-2 transition-colors">
-                        <i class="fas fa-cloud-arrow-up"></i> Importar para Fila
-                    </button>
-                    <button onclick="importarXLSEmitir()" id="btnXLSEmitir" class="flex-1 bg-blue-700 text-white font-bold py-3 rounded-xl hover:bg-blue-800 flex items-center justify-center gap-2 transition-colors">
-                        <i class="fas fa-rocket"></i> Importar e Emitir
-                    </button>
-                </div>
-                <p class="text-xs text-gray-400 mt-2 text-center">Pedidos sem CPF precisarão ser completados antes da emissão.</p>
-            </div>
+      <div id="xlsPreviewWrap" class="hidden">
+        <div class="overflow-auto max-h-72 rounded-xl border border-paper-edge">
+          <table class="w-full text-xs">
+            <thead class="bg-paper sticky top-0 text-ink-mute uppercase text-[10px]">
+              <tr><th class="px-2 py-2.5">#</th><th class="px-2 py-2.5 text-left">Sacado</th><th class="px-2 py-2.5">Produto</th><th class="px-2 py-2.5 text-right">Valor</th><th class="px-2 py-2.5">CPF/CNPJ</th><th class="px-2 py-2.5">Comp.</th><th class="px-2 py-2.5 text-center">Status</th></tr>
+            </thead>
+            <tbody id="xlsPreviewBody" class="divide-y divide-paper-edge"></tbody>
+          </table>
         </div>
+        <div class="mt-4 grid grid-cols-2 gap-3">
+          <div class="stat rounded-2xl p-3.5 text-center border border-paper-edge"><p class="text-[11px] text-moss-600 font-semibold uppercase tracking-wide">Total a faturar</p><p class="text-2xl font-bold font-display text-moss-700 tabnum" id="xlsTotalValor">R$ 0,00</p></div>
+          <div class="stat rounded-2xl p-3.5 text-center border border-paper-edge"><p class="text-[11px] text-sky2-600 font-semibold uppercase tracking-wide">ISS total</p><p class="text-2xl font-bold font-display text-sky2-700 tabnum" id="xlsTotalISS">R$ 0,00</p></div>
+        </div>
+        <div id="avisoCpf" class="hidden mt-3 bg-clay-50 border border-clay-100 rounded-2xl p-3 text-xs text-clay-700">
+          <i class="fas fa-triangle-exclamation mr-1"></i> <strong>Atenção:</strong> alguns pedidos estão sem CPF/CNPJ. Você informará antes de emitir.
+        </div>
+        <div class="flex gap-2.5 mt-4">
+          <button onclick="importarXLSFila()" class="flex-1 bg-paper border border-moss-600 text-moss-700 font-semibold py-3 rounded-xl hover:bg-moss-50 flex items-center justify-center gap-2 transition"><i class="fas fa-cloud-arrow-up"></i> Importar para fila</button>
+          <button onclick="importarXLSEmitir()" class="flex-1 bg-ink text-paper-card font-semibold py-3 rounded-xl hover:bg-ink-soft flex items-center justify-center gap-2 transition"><i class="fas fa-rocket"></i> Importar e emitir</button>
+        </div>
+      </div>
     </div>
+  </div>
 </div>
 
-<!-- ═══════════════════════════════════════════════════
-     TAB: COLAR TEXTO / BLOCO DE NOTAS
-═══════════════════════════════════════════════════ -->
-<div id="panel-colar" class="tab-panel hidden">
-    <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-            <h2 class="text-base font-bold text-gray-700 mb-1 flex items-center gap-2">
-                <i class="fas fa-clipboard-list text-blue-600"></i> Colar do Bloco de Notas
-            </h2>
-            <p class="text-xs text-gray-400 mb-4">Cole os dados copiados. Separador: <strong>TAB</strong> ou <strong>;</strong>. Cada linha = 1 NF-e.</p>
-
-            <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4">
-                <p class="text-xs font-bold text-amber-700 mb-2"><i class="fas fa-circle-info mr-1"></i> Colunas Obrigatórias (mínimo 4):</p>
-                <div class="grid grid-cols-2 gap-x-4 text-xs text-amber-800">
-                    <div><span class="font-bold font-mono bg-amber-100 px-1 rounded">1</span> Nome / Razão Social</div>
-                    <div><span class="font-bold font-mono bg-amber-100 px-1 rounded">2</span> CPF / CNPJ (só números)</div>
-                    <div><span class="font-bold font-mono bg-amber-100 px-1 rounded">3</span> CEP (só números)</div>
-                    <div><span class="font-bold font-mono bg-amber-100 px-1 rounded">4</span> Valor Total (R$)</div>
-                    <div class="text-amber-500"><span class="font-mono bg-amber-100 px-1 rounded">5</span> Logradouro</div>
-                    <div class="text-amber-500"><span class="font-mono bg-amber-100 px-1 rounded">6</span> Bairro</div>
-                    <div class="text-amber-500"><span class="font-mono bg-amber-100 px-1 rounded">7</span> Município</div>
-                    <div class="text-amber-500"><span class="font-mono bg-amber-100 px-1 rounded">8</span> UF</div>
-                    <div class="text-amber-500"><span class="font-mono bg-amber-100 px-1 rounded">9</span> Número</div>
-                    <div class="text-amber-500"><span class="font-mono bg-amber-100 px-1 rounded">10</span> Complemento</div>
-                </div>
-            </div>
-
-            <div class="flex gap-2 mb-3">
-                <button onclick="carregarExemploTexto()" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold py-2 px-3 rounded-lg flex items-center justify-center gap-1 transition-colors">
-                    <i class="fas fa-eye text-green-600"></i> Carregar Exemplo
-                </button>
-                <button onclick="downloadModeloTxt()" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold py-2 px-3 rounded-lg flex items-center justify-center gap-1 transition-colors">
-                    <i class="fas fa-download text-blue-600"></i> Baixar Modelo .txt
-                </button>
-            </div>
-
-            <div id="dropZoneTxt" class="border-2 border-dashed border-gray-200 rounded-xl p-3 transition-colors"
-                 ondragover="event.preventDefault();this.classList.add('drag-active')"
-                 ondragleave="this.classList.remove('drag-active')"
-                 ondrop="handleDropTxt(event)">
-                <textarea id="txtPedidos" rows="13" class="w-full bg-transparent resize-none focus:outline-none text-gray-700 placeholder-gray-300"
-                    placeholder="Cole aqui os dados (Ctrl+V)&#10;&#10;Ou arraste um arquivo .txt&#10;&#10;Exemplo:&#10;João da Silva	12345678901	60135215	952.04	Rua Francisco Holanda	Dionísio Torres	Fortaleza	CE	609"></textarea>
-            </div>
-
-            <div class="flex gap-2 mt-3">
-                <button onclick="processarTexto()" class="flex-1 bg-blue-600 text-white font-bold py-2.5 rounded-xl hover:bg-blue-700 flex items-center justify-center gap-2 transition-colors">
-                    <i class="fas fa-magnifying-glass-chart"></i> Analisar Pedidos
-                </button>
-                <button onclick="limparTexto()" class="bg-gray-100 hover:bg-gray-200 text-gray-600 font-semibold py-2.5 px-4 rounded-xl transition-colors">
-                    <i class="fas fa-trash"></i>
-                </button>
-            </div>
+<!-- ════════════ TAB COLAR ════════════ -->
+<div id="panel-colar" class="tab-panel hidden fade-up">
+  <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+    <div class="card rounded-2xl p-6">
+      <h2 class="font-display text-[17px] font-bold text-ink mb-1 flex items-center gap-2.5"><i class="fas fa-clipboard-list text-sky2-500"></i> Colar do bloco de notas</h2>
+      <p class="text-xs text-ink-mute mb-4">Separador: <strong>TAB</strong> ou <strong>;</strong>. Cada linha = 1 NF-e.</p>
+      <div class="bg-clay-50 border border-clay-100 rounded-2xl p-3.5 mb-4">
+        <p class="text-xs font-bold text-clay-700 mb-2"><i class="fas fa-circle-info mr-1"></i> Colunas obrigatórias (mín. 4):</p>
+        <div class="grid grid-cols-2 gap-x-4 gap-y-0.5 text-xs text-clay-700">
+          <div><span class="font-bold font-mono bg-clay-100 px-1 rounded">1</span> Nome / Razão Social</div>
+          <div><span class="font-bold font-mono bg-clay-100 px-1 rounded">2</span> CPF / CNPJ</div>
+          <div><span class="font-bold font-mono bg-clay-100 px-1 rounded">3</span> CEP</div>
+          <div><span class="font-bold font-mono bg-clay-100 px-1 rounded">4</span> Valor Total</div>
+          <div class="opacity-60"><span class="font-mono bg-clay-100 px-1 rounded">5</span> Logradouro</div>
+          <div class="opacity-60"><span class="font-mono bg-clay-100 px-1 rounded">6</span> Bairro</div>
+          <div class="opacity-60"><span class="font-mono bg-clay-100 px-1 rounded">7</span> Município</div>
+          <div class="opacity-60"><span class="font-mono bg-clay-100 px-1 rounded">8</span> UF</div>
         </div>
-
-        <!-- Preview texto -->
-        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-            <div class="flex items-center justify-between mb-4">
-                <h2 class="text-base font-bold text-gray-700 flex items-center gap-2">
-                    <i class="fas fa-table-list text-blue-600"></i> Preview
-                </h2>
-                <div id="resumoTxt" class="hidden flex gap-2 text-xs">
-                    <span class="bg-green-100 text-green-700 px-2 py-1 rounded-full font-semibold"><i class="fas fa-check mr-1"></i><span id="txt_ok">0</span></span>
-                    <span class="bg-red-100 text-red-700 px-2 py-1 rounded-full font-semibold"><i class="fas fa-xmark mr-1"></i><span id="txt_err">0</span> erros</span>
-                </div>
-            </div>
-            <div id="txtVazio" class="text-center py-16 text-gray-300">
-                <i class="fas fa-file-circle-question text-5xl mb-3 block"></i>
-                <p class="text-sm">Cole os dados e clique em Analisar</p>
-            </div>
-            <div id="txtPreviewWrap" class="hidden">
-                <div class="overflow-auto max-h-64 rounded-lg border border-gray-100">
-                    <table class="w-full text-xs">
-                        <thead class="bg-gray-50 sticky top-0 text-gray-400 uppercase text-[10px]">
-                            <tr>
-                                <th class="px-2 py-2">#</th>
-                                <th class="px-2 py-2 text-left">Nome</th>
-                                <th class="px-2 py-2">Doc</th>
-                                <th class="px-2 py-2">CEP</th>
-                                <th class="px-2 py-2 text-right">Valor</th>
-                                <th class="px-2 py-2 text-center">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody id="txtPreviewBody" class="divide-y divide-gray-50"></tbody>
-                    </table>
-                </div>
-                <div class="mt-4 grid grid-cols-2 gap-3">
-                    <div class="bg-green-50 rounded-xl p-3 text-center border border-green-100">
-                        <p class="text-xs text-green-600">Total</p>
-                        <p class="text-xl font-bold text-green-700" id="txtTotalValor">R$ 0,00</p>
-                    </div>
-                    <div class="bg-blue-50 rounded-xl p-3 text-center border border-blue-100">
-                        <p class="text-xs text-blue-600">ICMS Total</p>
-                        <p class="text-xl font-bold text-blue-700" id="txtTotalICMS">R$ 0,00</p>
-                    </div>
-                </div>
-                <div class="flex gap-2 mt-4">
-                    <button onclick="importarTextoFila()" class="flex-1 bg-green-600 text-white font-bold py-3 rounded-xl hover:bg-green-700 flex items-center justify-center gap-2">
-                        <i class="fas fa-cloud-arrow-up"></i> Importar para Fila
-                    </button>
-                    <button onclick="importarTextoEmitir()" class="flex-1 bg-blue-700 text-white font-bold py-3 rounded-xl hover:bg-blue-800 flex items-center justify-center gap-2">
-                        <i class="fas fa-rocket"></i> Importar e Emitir
-                    </button>
-                </div>
-            </div>
-        </div>
+      </div>
+      <div class="flex gap-2 mb-3">
+        <button onclick="carregarExemploTexto()" class="flex-1 bg-paper hover:bg-paper-edge text-ink-soft text-xs font-semibold py-2.5 rounded-xl flex items-center justify-center gap-1.5 border border-paper-edge transition"><i class="fas fa-eye text-moss-500"></i> Carregar exemplo</button>
+        <button onclick="downloadModeloTxt()" class="flex-1 bg-paper hover:bg-paper-edge text-ink-soft text-xs font-semibold py-2.5 rounded-xl flex items-center justify-center gap-1.5 border border-paper-edge transition"><i class="fas fa-download text-sky2-500"></i> Baixar modelo .txt</button>
+      </div>
+      <div id="dropZoneTxt" class="upload-zone rounded-2xl p-3" ondragover="event.preventDefault();this.classList.add('drag-active')" ondragleave="this.classList.remove('drag-active')" ondrop="handleDropTxt(event)">
+        <textarea id="txtPedidos" rows="13" class="w-full bg-transparent resize-none focus:outline-none text-ink placeholder-ink-mute/40" placeholder="Cole aqui (Ctrl+V) ou arraste um .txt&#10;&#10;Exemplo:&#10;João da Silva&#9;12345678901&#9;60135215&#9;952.04&#9;Rua Francisco Holanda&#9;Dionísio Torres&#9;Fortaleza&#9;CE&#9;609"></textarea>
+      </div>
+      <div class="flex gap-2 mt-3">
+        <button onclick="processarTexto()" class="flex-1 bg-ink text-paper-card font-semibold py-2.5 rounded-xl hover:bg-ink-soft flex items-center justify-center gap-2 transition"><i class="fas fa-magnifying-glass-chart"></i> Analisar pedidos</button>
+        <button onclick="limparTexto()" class="bg-paper hover:bg-paper-edge text-ink-soft font-semibold py-2.5 px-4 rounded-xl border border-paper-edge transition"><i class="fas fa-trash"></i></button>
+      </div>
     </div>
+
+    <div class="card rounded-2xl p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="font-display text-[17px] font-bold text-ink flex items-center gap-2.5"><i class="fas fa-table-list text-sky2-500"></i> Preview</h2>
+        <div id="resumoTxt" class="hidden flex gap-1.5 text-[11px]">
+          <span class="bg-moss-50 text-moss-700 px-2 py-1 rounded-full font-semibold"><i class="fas fa-check mr-1"></i><span id="txt_ok">0</span></span>
+          <span class="bg-rust-50 text-rust-600 px-2 py-1 rounded-full font-semibold"><i class="fas fa-xmark mr-1"></i><span id="txt_err">0</span></span>
+        </div>
+      </div>
+      <div id="txtVazio" class="text-center py-16 text-ink-mute/50"><i class="fas fa-file-circle-question text-5xl mb-3 block"></i><p class="text-sm">Cole os dados e clique em Analisar</p></div>
+      <div id="txtPreviewWrap" class="hidden">
+        <div class="overflow-auto max-h-64 rounded-xl border border-paper-edge">
+          <table class="w-full text-xs"><thead class="bg-paper sticky top-0 text-ink-mute uppercase text-[10px]"><tr><th class="px-2 py-2.5">#</th><th class="px-2 py-2.5 text-left">Nome</th><th class="px-2 py-2.5">Doc</th><th class="px-2 py-2.5">CEP</th><th class="px-2 py-2.5 text-right">Valor</th><th class="px-2 py-2.5 text-center">Status</th></tr></thead><tbody id="txtPreviewBody" class="divide-y divide-paper-edge"></tbody></table>
+        </div>
+        <div class="mt-4 grid grid-cols-2 gap-3">
+          <div class="stat rounded-2xl p-3.5 text-center border border-paper-edge"><p class="text-[11px] text-moss-600 font-semibold uppercase">Total</p><p class="text-xl font-bold font-display text-moss-700 tabnum" id="txtTotalValor">R$ 0,00</p></div>
+          <div class="stat rounded-2xl p-3.5 text-center border border-paper-edge"><p class="text-[11px] text-sky2-600 font-semibold uppercase">ISS Total</p><p class="text-xl font-bold font-display text-sky2-700 tabnum" id="txtTotalISS">R$ 0,00</p></div>
+        </div>
+        <div class="flex gap-2.5 mt-4">
+          <button onclick="importarTextoFila()" class="flex-1 bg-paper border border-moss-600 text-moss-700 font-semibold py-3 rounded-xl hover:bg-moss-50 flex items-center justify-center gap-2 transition"><i class="fas fa-cloud-arrow-up"></i> Importar para fila</button>
+          <button onclick="importarTextoEmitir()" class="flex-1 bg-ink text-paper-card font-semibold py-3 rounded-xl hover:bg-ink-soft flex items-center justify-center gap-2 transition"><i class="fas fa-rocket"></i> Importar e emitir</button>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
-<!-- ═══════════════════════════════════════════════════
-     TAB: MANUAL
-═══════════════════════════════════════════════════ -->
-<div id="panel-manual" class="tab-panel hidden">
-    <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        <div class="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-            <h2 class="text-base font-bold mb-4 text-gray-700 flex items-center gap-2">
-                <i class="fas fa-plus-circle text-blue-600"></i> Nova Nota Manual
-            </h2>
-            <form id="nfeForm" class="space-y-3">
-                <div class="grid grid-cols-2 gap-2">
-                    <div class="col-span-2">
-                        <label class="text-xs text-gray-500 mb-1 block font-medium">Razão Social / Nome *</label>
-                        <input type="text" id="m_cliente" placeholder="Ex: João da Silva" class="w-full border border-gray-200 p-2.5 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" required>
-                    </div>
-                    <div>
-                        <label class="text-xs text-gray-500 mb-1 block font-medium">CPF / CNPJ *</label>
-                        <input type="text" id="m_doc" placeholder="Só números" maxlength="18" class="w-full border border-gray-200 p-2.5 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" required>
-                    </div>
-                    <div>
-                        <label class="text-xs text-gray-500 mb-1 block font-medium">CEP *</label>
-                        <input type="text" id="m_cep" placeholder="60135215" maxlength="9" value="60135215" class="w-full border border-gray-200 p-2.5 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" required>
-                    </div>
-                    <div class="col-span-2">
-                        <label class="text-xs text-gray-500 mb-1 block font-medium">Logradouro</label>
-                        <input type="text" id="m_logradouro" placeholder="Rua Francisco Holanda" value="Rua Francisco Holanda" class="w-full border border-gray-200 p-2.5 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-300">
-                    </div>
-                    <div>
-                        <label class="text-xs text-gray-500 mb-1 block font-medium">Número</label>
-                        <input type="text" id="m_numero" placeholder="609" value="609" class="w-full border border-gray-200 p-2.5 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-300">
-                    </div>
-                    <div>
-                        <label class="text-xs text-gray-500 mb-1 block font-medium">Complemento</label>
-                        <input type="text" id="m_complemento" placeholder="Apto, Sala..." class="w-full border border-gray-200 p-2.5 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-300">
-                    </div>
-                    <div>
-                        <label class="text-xs text-gray-500 mb-1 block font-medium">Bairro</label>
-                        <input type="text" id="m_bairro" placeholder="Dionísio Torres" value="Dionísio Torres" class="w-full border border-gray-200 p-2.5 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-300">
-                    </div>
-                    <div>
-                        <label class="text-xs text-gray-500 mb-1 block font-medium">Município</label>
-                        <input type="text" id="m_municipio" placeholder="Fortaleza" value="Fortaleza" class="w-full border border-gray-200 p-2.5 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-300">
-                    </div>
-                    <div>
-                        <label class="text-xs text-gray-500 mb-1 block font-medium">UF</label>
-                        <select id="m_uf" class="w-full border border-gray-200 p-2.5 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-300">
-                            <option value="CE" selected>CE</option>
-                            <option value="SP">SP</option><option value="RJ">RJ</option><option value="MG">MG</option>
-                            <option value="RS">RS</option><option value="PR">PR</option><option value="SC">SC</option>
-                            <option value="BA">BA</option><option value="PE">PE</option><option value="GO">GO</option>
-                            <option value="ES">ES</option><option value="MA">MA</option><option value="PA">PA</option>
-                            <option value="AM">AM</option><option value="DF">DF</option><option value="MT">MT</option>
-                            <option value="MS">MS</option><option value="PI">PI</option><option value="RN">RN</option>
-                            <option value="PB">PB</option><option value="AL">AL</option><option value="SE">SE</option>
-                        </select>
-                    </div>
-                    <div class="col-span-2">
-                        <label class="text-xs text-gray-500 mb-1 block font-medium">Valor Total R$ *</label>
-                        <input type="number" step="0.01" id="m_valor" placeholder="952.04" class="w-full border border-gray-200 p-2.5 rounded-lg text-sm font-bold text-green-700 focus:outline-none focus:ring-2 focus:ring-blue-300" required>
-                    </div>
-                </div>
-
-                <!-- Preview fiscal live -->
-                <div id="m_previewFiscal" class="hidden bg-blue-50 border border-blue-100 rounded-xl p-3 space-y-1.5">
-                    <p class="text-xs font-bold text-blue-700"><i class="fas fa-calculator mr-1"></i> Cálculo Fiscal (CE):</p>
-                    <div class="grid grid-cols-2 gap-x-3 text-xs text-blue-800">
-                        <div>Base ICMS (red. 79,25%): <strong id="pv_base">—</strong></div>
-                        <div>ICMS 20%: <strong id="pv_icms">—</strong></div>
-                        <div>PIS 0,65%: <strong id="pv_pis">—</strong></div>
-                        <div>COFINS 3%: <strong id="pv_cofins">—</strong></div>
-                        <div class="col-span-2 pt-1 border-t border-blue-200">
-                            Tributos aprox: Fed <strong id="pv_fed">—</strong> · Est <strong id="pv_est">—</strong>
-                        </div>
-                    </div>
-                </div>
-
-                <button type="submit" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 transition-colors flex items-center justify-center gap-2">
-                    <i class="fas fa-save"></i> Salvar na Fila
-                </button>
-            </form>
+<!-- ════════════ TAB MANUAL ════════════ -->
+<div id="panel-manual" class="tab-panel hidden fade-up">
+  <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+    <div class="lg:col-span-2 card rounded-2xl p-6">
+      <h2 class="font-display text-[17px] font-bold mb-4 text-ink flex items-center gap-2.5"><i class="fas fa-plus-circle text-moss-500"></i> Nova nota manual</h2>
+      <form id="nfeForm" class="space-y-3">
+        <div class="grid grid-cols-2 gap-2.5">
+          <div class="col-span-2"><label class="text-[11px] text-ink-mute mb-1 block font-semibold uppercase tracking-wide">Razão Social / Nome *</label><input type="text" id="m_cliente" placeholder="Ex: João da Silva" class="w-full bg-paper border border-paper-edge p-2.5 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-moss-300" required></div>
+          <div><label class="text-[11px] text-ink-mute mb-1 block font-semibold uppercase tracking-wide">CPF / CNPJ *</label><input type="text" id="m_doc" placeholder="Só números" maxlength="18" class="w-full bg-paper border border-paper-edge p-2.5 rounded-xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-moss-300" required></div>
+          <div><label class="text-[11px] text-ink-mute mb-1 block font-semibold uppercase tracking-wide">CEP *</label><input type="text" id="m_cep" placeholder="60135215" maxlength="9" value="60135215" class="w-full bg-paper border border-paper-edge p-2.5 rounded-xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-moss-300" required></div>
+          <div class="col-span-2"><label class="text-[11px] text-ink-mute mb-1 block font-semibold uppercase tracking-wide">Logradouro</label><input type="text" id="m_logradouro" value="Rua Francisco Holanda" class="w-full bg-paper border border-paper-edge p-2.5 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-moss-300"></div>
+          <div><label class="text-[11px] text-ink-mute mb-1 block font-semibold uppercase tracking-wide">Número</label><input type="text" id="m_numero" value="609" class="w-full bg-paper border border-paper-edge p-2.5 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-moss-300"></div>
+          <div><label class="text-[11px] text-ink-mute mb-1 block font-semibold uppercase tracking-wide">Complemento</label><input type="text" id="m_complemento" placeholder="Apto, Sala…" class="w-full bg-paper border border-paper-edge p-2.5 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-moss-300"></div>
+          <div><label class="text-[11px] text-ink-mute mb-1 block font-semibold uppercase tracking-wide">Bairro</label><input type="text" id="m_bairro" value="Dionísio Torres" class="w-full bg-paper border border-paper-edge p-2.5 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-moss-300"></div>
+          <div><label class="text-[11px] text-ink-mute mb-1 block font-semibold uppercase tracking-wide">Município</label><input type="text" id="m_municipio" value="Fortaleza" class="w-full bg-paper border border-paper-edge p-2.5 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-moss-300"></div>
+          <div><label class="text-[11px] text-ink-mute mb-1 block font-semibold uppercase tracking-wide">UF</label>
+            <select id="m_uf" class="w-full bg-paper border border-paper-edge p-2.5 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-moss-300">
+              <option value="CE" selected>CE</option><option value="SP">SP</option><option value="RJ">RJ</option><option value="MG">MG</option><option value="RS">RS</option><option value="PR">PR</option><option value="SC">SC</option><option value="BA">BA</option><option value="PE">PE</option><option value="GO">GO</option><option value="ES">ES</option><option value="MA">MA</option><option value="PA">PA</option><option value="AM">AM</option><option value="DF">DF</option><option value="MT">MT</option><option value="MS">MS</option><option value="PI">PI</option><option value="RN">RN</option><option value="PB">PB</option><option value="AL">AL</option><option value="SE">SE</option>
+            </select>
+          </div>
+          <div class="col-span-2"><label class="text-[11px] text-ink-mute mb-1 block font-semibold uppercase tracking-wide">Valor Total R$ *</label><input type="number" step="0.01" id="m_valor" placeholder="952.04" class="w-full bg-paper border border-paper-edge p-2.5 rounded-xl text-sm font-bold text-moss-700 font-mono focus:outline-none focus:ring-2 focus:ring-moss-300" required></div>
         </div>
-
-        <div class="lg:col-span-3 bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-base font-bold text-gray-700 flex items-center gap-2">
-                    <i class="fas fa-list text-blue-600"></i> Notas na Fila (últimas 15)
-                </h2>
-                <button id="btnEmitirManual" class="bg-green-600 text-white text-sm font-bold px-4 py-2 rounded-xl hover:bg-green-700 flex items-center gap-2">
-                    <i class="fas fa-rocket"></i> Processar Pendentes
-                </button>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-sm text-left">
-                    <thead class="bg-gray-50 text-gray-400 text-xs uppercase">
-                        <tr>
-                            <th class="px-3 py-2 rounded-l-lg">Cliente</th>
-                            <th class="px-3 py-2">Documento</th>
-                            <th class="px-3 py-2 text-right">Valor</th>
-                            <th class="px-3 py-2 text-center">Status</th>
-                            <th class="px-3 py-2 rounded-r-lg text-center">NF-e</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tabelaManual" class="divide-y divide-gray-50"></tbody>
-                </table>
-            </div>
-            <div id="emptyManual" class="text-center py-12 text-gray-300">
-                <i class="fas fa-inbox text-4xl mb-2 block"></i><p class="text-sm">Nenhuma nota</p>
-            </div>
+        <div id="m_previewFiscal" class="hidden bg-sky2-50 border border-sky2-100 rounded-2xl p-3.5 space-y-1.5">
+          <p class="text-xs font-bold text-sky2-700"><i class="fas fa-calculator mr-1"></i> Cálculo do ISS:</p>
+          <div class="grid grid-cols-2 gap-x-3 gap-y-0.5 text-xs text-sky2-700 font-mono">
+            <div>Base de cálculo: <strong id="pv_base">—</strong></div><div>ISS <span id="pv_aliq">5%</span>: <strong id="pv_iss">—</strong></div>
+            <div class="col-span-2 pt-1 border-t border-sky2-100">Valor líquido (ISS não retido): <strong id="pv_liq">—</strong></div>
+          </div>
         </div>
+        <button type="submit" class="w-full bg-ink text-paper-card font-semibold py-3 rounded-xl hover:bg-ink-soft transition flex items-center justify-center gap-2"><i class="fas fa-save"></i> Salvar na fila</button>
+      </form>
     </div>
+
+    <div class="lg:col-span-3 card rounded-2xl p-6">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="font-display text-[17px] font-bold text-ink flex items-center gap-2.5"><i class="fas fa-list text-sky2-500"></i> Notas na fila (últimas 15)</h2>
+        <button id="btnEmitirManual" class="bg-moss-600 text-white text-sm font-semibold px-4 py-2 rounded-xl hover:bg-moss-700 flex items-center gap-2 transition"><i class="fas fa-rocket"></i> Processar pendentes</button>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm text-left">
+          <thead class="bg-paper text-ink-mute text-[11px] uppercase"><tr><th class="px-3 py-2.5 rounded-l-lg">Cliente</th><th class="px-3 py-2.5">Documento</th><th class="px-3 py-2.5 text-right">Valor</th><th class="px-3 py-2.5 text-center">Status</th><th class="px-3 py-2.5 rounded-r-lg text-center">NF-e</th></tr></thead>
+          <tbody id="tabelaManual" class="divide-y divide-paper-edge"></tbody>
+        </table>
+      </div>
+      <div id="emptyManual" class="text-center py-12 text-ink-mute/50"><i class="fas fa-inbox text-4xl mb-2 block"></i><p class="text-sm">Nenhuma nota</p></div>
+    </div>
+  </div>
 </div>
 
-<!-- ═══════════════════════════════════════════════════
-     TAB: FILA
-═══════════════════════════════════════════════════ -->
-<div id="panel-fila" class="tab-panel hidden">
-    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <div class="p-5 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">
-            <div>
-                <h2 class="text-base font-bold text-gray-700 flex items-center gap-2">
-                    <i class="fas fa-conveyor-belt text-blue-600"></i> Fila de Emissão
-                </h2>
-                <p class="text-xs text-gray-400 mt-0.5"><span id="totalFila">0</span> notas • <span id="totalPendenteFila">0</span> pendentes</p>
-            </div>
-            <div class="flex flex-wrap gap-2">
-                <button onclick="filtrarFila('todos')" id="f-todos" class="f-btn bg-gray-800 text-white text-xs font-semibold px-3 py-1.5 rounded-lg">Todos</button>
-                <button onclick="filtrarFila('pendente')" id="f-pendente" class="f-btn bg-gray-100 text-gray-600 text-xs font-semibold px-3 py-1.5 rounded-lg">Pendentes</button>
-                <button onclick="filtrarFila('emitido')" id="f-emitido" class="f-btn bg-gray-100 text-gray-600 text-xs font-semibold px-3 py-1.5 rounded-lg">Emitidos</button>
-                <button onclick="filtrarFila('erro')" id="f-erro" class="f-btn bg-gray-100 text-gray-600 text-xs font-semibold px-3 py-1.5 rounded-lg">Com Erro</button>
-            </div>
-        </div>
-
-        <!-- Progresso -->
-        <div id="progressoWrap" class="hidden px-5 py-3 bg-blue-50 border-b border-blue-100">
-            <div class="flex justify-between mb-1">
-                <span class="text-xs font-semibold text-blue-700"><i class="fas fa-spinner fa-spin mr-1"></i> Processando NF-e com SEFAZ…</span>
-                <span id="progTxt" class="text-xs text-blue-600 font-mono">0 / 0</span>
-            </div>
-            <div class="w-full bg-blue-100 rounded-full h-2.5">
-                <div id="progBar" class="bg-blue-500 h-2.5 rounded-full progress-bar" style="width:0%"></div>
-            </div>
-        </div>
-
-        <div class="overflow-x-auto">
-            <table class="w-full text-sm text-left">
-                <thead class="bg-gray-50 text-gray-400 text-xs uppercase">
-                    <tr>
-                        <th class="px-4 py-3 w-8"><input type="checkbox" id="checkAll" onchange="toggleCheckAll(this)" class="rounded accent-blue-600"></th>
-                        <th class="px-4 py-3">Cliente</th>
-                        <th class="px-4 py-3">Documento</th>
-                        <th class="px-4 py-3">CEP</th>
-                        <th class="px-4 py-3 text-right">Valor</th>
-                        <th class="px-4 py-3 text-right">ICMS</th>
-                        <th class="px-4 py-3 text-center">Status</th>
-                        <th class="px-4 py-3 text-center">Ações</th>
-                    </tr>
-                </thead>
-                <tbody id="tabelaFila" class="divide-y divide-gray-50"></tbody>
-            </table>
-        </div>
-        <div id="emptyFila" class="text-center py-16 text-gray-300">
-            <i class="fas fa-inbox text-5xl mb-3 block"></i><p>Fila vazia</p>
-        </div>
-
-        <div class="p-4 border-t border-gray-100 bg-gray-50 flex flex-wrap items-center justify-between gap-3">
-            <div class="flex gap-2 text-xs text-gray-400">
-                <span class="bg-white border rounded px-2 py-1">Origem: <span id="origemFila">—</span></span>
-            </div>
-            <div class="flex gap-2">
-                <button onclick="emitirSelecionados()" class="bg-blue-600 text-white text-sm font-bold px-4 py-2 rounded-xl hover:bg-blue-700 flex items-center gap-2">
-                    <i class="fas fa-paper-plane"></i> Emitir Selecionados
-                </button>
-                <button onclick="emitirTodasPendentes()" class="bg-green-600 text-white text-sm font-bold px-4 py-2 rounded-xl hover:bg-green-700 flex items-center gap-2">
-                    <i class="fas fa-rocket"></i> Processar Todos Pendentes
-                </button>
-            </div>
-        </div>
+<!-- ════════════ TAB FILA ════════════ -->
+<div id="panel-fila" class="tab-panel hidden fade-up">
+  <div class="card rounded-2xl overflow-hidden">
+    <div class="p-5 border-b border-paper-edge flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <h2 class="font-display text-[17px] font-bold text-ink flex items-center gap-2.5"><i class="fas fa-conveyor-belt text-sky2-500"></i> Fila de emissão</h2>
+        <p class="text-xs text-ink-mute mt-0.5"><span id="totalFila">0</span> notas · <span id="totalPendenteFila">0</span> pendentes</p>
+      </div>
+      <div class="flex flex-wrap gap-1.5">
+        <button onclick="filtrarFila('todos')" id="f-todos" class="f-btn bg-ink text-paper-card text-xs font-semibold px-3 py-1.5 rounded-lg">Todos</button>
+        <button onclick="filtrarFila('pendente')" id="f-pendente" class="f-btn bg-paper text-ink-soft text-xs font-semibold px-3 py-1.5 rounded-lg border border-paper-edge">Pendentes</button>
+        <button onclick="filtrarFila('emitido')" id="f-emitido" class="f-btn bg-paper text-ink-soft text-xs font-semibold px-3 py-1.5 rounded-lg border border-paper-edge">Emitidos</button>
+        <button onclick="filtrarFila('erro')" id="f-erro" class="f-btn bg-paper text-ink-soft text-xs font-semibold px-3 py-1.5 rounded-lg border border-paper-edge">Com erro</button>
+      </div>
     </div>
+    <div id="progressoWrap" class="hidden px-5 py-3 bg-sky2-50 border-b border-sky2-100">
+      <div class="flex justify-between mb-1.5"><span class="text-xs font-semibold text-sky2-700"><i class="fas fa-spinner fa-spin mr-1"></i> Emitindo com a SEFAZ…</span><span id="progTxt" class="text-xs text-sky2-600 font-mono">0 / 0</span></div>
+      <div class="w-full bg-sky2-100 rounded-full h-2"><div id="progBar" class="bg-sky2-500 h-2 rounded-full progress-bar" style="width:0%"></div></div>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm text-left">
+        <thead class="bg-paper text-ink-mute text-[11px] uppercase"><tr>
+          <th class="px-4 py-3 w-8"><input type="checkbox" id="checkAll" onchange="toggleCheckAll(this)" class="rounded accent-moss-600"></th>
+          <th class="px-4 py-3">Cliente</th><th class="px-4 py-3">Documento</th><th class="px-4 py-3">CEP</th><th class="px-4 py-3 text-right">Valor</th><th class="px-4 py-3 text-right">ISS</th><th class="px-4 py-3 text-center">Status</th><th class="px-4 py-3 text-center">Ações</th>
+        </tr></thead>
+        <tbody id="tabelaFila" class="divide-y divide-paper-edge"></tbody>
+      </table>
+    </div>
+    <div id="emptyFila" class="text-center py-16 text-ink-mute/50"><i class="fas fa-inbox text-5xl mb-3 block"></i><p>Fila vazia</p></div>
+    <div class="p-4 border-t border-paper-edge bg-paper/60 flex flex-wrap items-center justify-end gap-2.5">
+      <button onclick="emitirSelecionados()" class="bg-paper border border-sky2-500 text-sky2-700 text-sm font-semibold px-4 py-2 rounded-xl hover:bg-sky2-50 flex items-center gap-2 transition"><i class="fas fa-paper-plane"></i> Emitir selecionados</button>
+      <button onclick="emitirTodasPendentes()" class="bg-moss-600 text-white text-sm font-semibold px-4 py-2 rounded-xl hover:bg-moss-700 flex items-center gap-2 transition"><i class="fas fa-rocket"></i> Processar todos pendentes</button>
+    </div>
+  </div>
 </div>
 
-<!-- ═══════════════════════════════════════════════════
-     TAB: HISTÓRICO
-═══════════════════════════════════════════════════ -->
-<div id="panel-historico" class="tab-panel hidden">
-    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <div class="p-5 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">
-            <h2 class="text-base font-bold text-gray-700 flex items-center gap-2">
-                <i class="fas fa-clock-rotate-left text-blue-600"></i> Histórico de Emissões
-            </h2>
-            <div class="flex gap-2">
-                <input type="text" id="buscaHist" placeholder="Buscar cliente…" oninput="buscarHist(this.value)"
-                    class="border border-gray-200 rounded-xl px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 w-44">
-                <button onclick="exportarCSV()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold py-2 px-3 rounded-xl flex items-center gap-2">
-                    <i class="fas fa-file-csv text-green-600"></i> CSV
-                </button>
-            </div>
-        </div>
-        <div class="overflow-x-auto">
-            <table class="w-full text-sm text-left">
-                <thead class="bg-gray-50 text-gray-400 text-xs uppercase">
-                    <tr>
-                        <th class="px-4 py-3">Cliente</th>
-                        <th class="px-4 py-3">Documento</th>
-                        <th class="px-4 py-3 text-right">Valor</th>
-                        <th class="px-4 py-3 text-right">ICMS</th>
-                        <th class="px-4 py-3 text-right">PIS</th>
-                        <th class="px-4 py-3 text-right">COFINS</th>
-                        <th class="px-4 py-3 text-center">Status</th>
-                        <th class="px-4 py-3 text-center">NF-e</th>
-                    </tr>
-                </thead>
-                <tbody id="tabelaHist" class="divide-y divide-gray-50"></tbody>
-            </table>
-        </div>
-        <div id="emptyHist" class="text-center py-16 text-gray-300">
-            <i class="fas fa-file-circle-xmark text-5xl mb-3 block"></i><p>Nenhum registro</p>
-        </div>
+<!-- ════════════ TAB HISTÓRICO ════════════ -->
+<div id="panel-historico" class="tab-panel hidden fade-up">
+  <div class="card rounded-2xl overflow-hidden">
+    <div class="p-5 border-b border-paper-edge flex flex-wrap items-center justify-between gap-3">
+      <h2 class="font-display text-[17px] font-bold text-ink flex items-center gap-2.5"><i class="fas fa-clock-rotate-left text-sky2-500"></i> Histórico de emissões</h2>
+      <div class="flex gap-2">
+        <input type="text" id="buscaHist" placeholder="Buscar cliente…" oninput="buscarHist(this.value)" class="bg-paper border border-paper-edge rounded-xl px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-moss-200 w-44">
+        <button onclick="exportarCSV()" class="bg-paper hover:bg-paper-edge text-ink-soft text-xs font-semibold py-2 px-3 rounded-xl flex items-center gap-2 border border-paper-edge transition"><i class="fas fa-file-csv text-moss-500"></i> CSV</button>
+      </div>
     </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm text-left">
+        <thead class="bg-paper text-ink-mute text-[11px] uppercase"><tr><th class="px-4 py-3">Cliente</th><th class="px-4 py-3">Documento</th><th class="px-4 py-3 text-right">Valor</th><th class="px-4 py-3 text-right">ISS</th><th class="px-4 py-3 text-center">Competência</th><th class="px-4 py-3 text-center">Status</th><th class="px-4 py-3 text-center">NFS-e</th></tr></thead>
+        <tbody id="tabelaHist" class="divide-y divide-paper-edge"></tbody>
+      </table>
+    </div>
+    <div id="emptyHist" class="text-center py-16 text-ink-mute/50"><i class="fas fa-file-circle-xmark text-5xl mb-3 block"></i><p>Nenhum registro</p></div>
+  </div>
 </div>
 
 </div><!-- /container -->
 
-<!-- ═══════════════════════════════════════════════════
-     MODAL: PREENCHER CPF
-═══════════════════════════════════════════════════ -->
-<div id="modalCpf" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-    <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-lg mx-4">
-        <h3 class="text-lg font-bold text-gray-800 mb-1"><i class="fas fa-id-card text-blue-600 mr-2"></i>Preencher CPF/CNPJ</h3>
-        <p class="text-xs text-gray-400 mb-4">Os pedidos abaixo estão sem CPF/CNPJ. Preencha para continuar a emissão.</p>
-        <div id="modalCpfLista" class="space-y-3 max-h-80 overflow-y-auto"></div>
-        <div class="flex gap-2 mt-5">
-            <button onclick="fecharModalCpf()" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-2.5 rounded-xl transition-colors">Cancelar</button>
-            <button onclick="confirmarModalCpf()" class="flex-1 bg-blue-600 text-white font-bold py-2.5 rounded-xl hover:bg-blue-700 transition-colors">
-                <i class="fas fa-check mr-1"></i> Confirmar e Importar
-            </button>
-        </div>
+<!-- ════════════ MODAL CPF ════════════ -->
+<div id="modalCpf" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-ink/40 backdrop-blur-sm">
+  <div class="bg-paper-card rounded-3xl shadow-lift p-6 w-full max-w-lg mx-4">
+    <h3 class="font-display text-lg font-bold text-ink mb-1"><i class="fas fa-id-card text-moss-600 mr-2"></i>Preencher CPF/CNPJ</h3>
+    <p class="text-xs text-ink-mute mb-4">Os pedidos abaixo estão sem documento. Preencha para continuar.</p>
+    <div id="modalCpfLista" class="space-y-3 max-h-80 overflow-y-auto"></div>
+    <div class="flex gap-2.5 mt-5">
+      <button onclick="fecharModalCpf()" class="flex-1 bg-paper hover:bg-paper-edge text-ink-soft font-semibold py-2.5 rounded-xl border border-paper-edge transition">Cancelar</button>
+      <button onclick="confirmarModalCpf()" class="flex-1 bg-ink text-paper-card font-semibold py-2.5 rounded-xl hover:bg-ink-soft transition"><i class="fas fa-check mr-1"></i> Confirmar e importar</button>
     </div>
+  </div>
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-app.js";
-import {
-    getFirestore, collection, addDoc, onSnapshot,
-    query, where, getDocs, updateDoc, doc, serverTimestamp
-} from "https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore.js";
+import { getFirestore, collection, addDoc, onSnapshot, updateDoc, doc, serverTimestamp }
+  from "https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore.js";
 
 // ══════════════════════════════════════════════
-// CONFIG
+//  CONFIGURAÇÃO  —  ajuste estes 3 valores
 // ══════════════════════════════════════════════
 const firebaseConfig = {
-    apiKey: "AIzaSyCPXMQfxQ_q8B3MgKK4KK3qDtVD3GDYnhg",
-    authDomain: "emissor-2a55a.firebaseapp.com",
-    projectId: "emissor-2a55a",
-    storageBucket: "emissor-2a55a.firebasestorage.app",
-    messagingSenderId: "289980588435",
-    appId: "1:289980588435:web:4588d7ee43bc1ef9ff4866"
+  apiKey: "AIzaSyCPXMQfxQ_q8B3MgKK4KK3qDtVD3GDYnhg",
+  authDomain: "emissor-2a55a.firebaseapp.com",
+  projectId: "emissor-2a55a",
+  storageBucket: "emissor-2a55a.firebasestorage.app",
+  messagingSenderId: "289980588435",
+  appId: "1:289980588435:web:4588d7ee43bc1ef9ff4866"
 };
 
-// ─── Focus NF-e ───────────────────────────────
-const TOKEN_FOCUS = "fD3xZpJer34QFZn5joKWqr1Tz09b99Sr";
-const PROXY       = "https://cors-anywhere.herokuapp.com/";
-const BASE_URL    = "https://homologacao.focusnfe.com.br/v2/nfe";
+// ███ CONFIGURAÇÃO (só estes 2 valores) ███████████████████████
+// 1) URL da sua Cloud Function (você recebe após "firebase deploy"):
+const FUNCTION_URL = "https://southamerica-east1-emissor-2a55a.cloudfunctions.net/emitirNFSe";
+// 2) A MESMA senha que você definiu no segredo APP_SECRET da função:
+const APP_SECRET   = "TROQUE_POR_UMA_SENHA_FORTE";
+// (As credenciais da Nuvem Fiscal e o certificado A1 ficam no PAINEL da Nuvem
+//  Fiscal — não aqui. Aqui não há token nem certificado.)
+// ████████████████████████████████████████████████████████████
 
-// ─── Dados do Emitente (CRINUTRIR) ────────────
+// Ambiente ('homologacao' = testes | 'producao' = nota válida). Começa em testes.
+let AMBIENTE = "homologacao";
+
+// ─── Emitente / prestador (CRINUTRIR) ─────────
 const EMITENTE = {
-    cnpj:       "63136596000171",
-    nome:       "CRINUTRIR LTDA",
-    ie:         "000072886170",
-    logradouro: "Rua Francisco Holanda",
-    numero:     "609",
-    bairro:     "Dionísio Torres",
-    municipio:  "Fortaleza",
-    uf:         "CE",
-    cep:        "60135215",
-    cep_dest_padrao: "60135215"   // CEP padrão para destinatário quando não informado
+  cnpj:"63136596000171",
+  logradouro:"Rua Francisco Holanda", numero:"609", bairro:"Dionísio Torres",
+  municipio:"Fortaleza", uf:"CE", cep:"60135215", cMun:"2304400" // IBGE Fortaleza
 };
 
-// ─── Parâmetros Fiscais (NF-e modelo DANFE) ────
+// ─── Parâmetros fiscais da NFS-e ──────────────
+//  ⚠ CONFIRME COM SUA CONTABILIDADE os 3 valores marcados (★):
 const FISCAL = {
-    codigo_produto:         "3620498",
-    descricao:              "Plano de Refeicao",
-    ncm:                    "21069090",          // NCM 2106.90.90
-    cfop:                   "5102",              // dentro do estado CE
-    cfop_fora:              "6405",              // fora do estado
-    unidade:                "UN",
-    cst_icms:               "020",               // ICMS substituição tributária — conforme DANFE
-    icms_origem:            "0",
-    cst_pis:                "01",
-    aliq_pis:               0.65,
-    cst_cofins:             "01",
-    aliq_cofins:            3.0,
-    aliq_fed_ibpt:          13.45,
-    aliq_est_ibpt:          20.00,
-    // redução de base e alíquota conforme DANFE modelo:
-    reducao_base_icms:      79.25,
-    aliq_icms:              20.0,
+  descricao:"Plano de refeicoes / acompanhamento nutricional",
+  serie:"1",                 // série da NFS-e (geralmente 1)
+  cTribNac:"010701",         // ★ código de tributação nacional (item da lista LC 116)
+  aliqISS:5.0,               // ★ alíquota de ISS de Fortaleza para este serviço (%)
+  opSimpNac:1,               // ★ 1=Simples Nacional MEI/normal | 2=Simples | 3=Regime normal
+  tpRetISSQN:1,              // 1 = ISS não retido pelo tomador
+  cMunFortaleza:"2304400",
 };
 
-// ══════════════════════════════════════════════
-// FIREBASE
 // ══════════════════════════════════════════════
 const fireApp = initializeApp(firebaseConfig);
-const db      = getFirestore(fireApp);
+const db = getFirestore(fireApp);
 
-let todasVendas   = [];
-let filtroAtual   = 'todos';
-let pedidosXLS    = [];  // preview planilha
-let pedidosTxt    = [];  // preview texto
-let modalCallback = null;
+let todasVendas=[], filtroAtual='todos', pedidosXLS=[], pedidosTxt=[], modalCallback=null, _busca='';
 
-// ══════════════════════════════════════════════
-// UTILS
-// ══════════════════════════════════════════════
-function calcFiscal(valorBruto) {
-    const baseICMS    = valorBruto * (1 - FISCAL.reducao_base_icms / 100);
-    const icmsValor   = baseICMS * (FISCAL.aliq_icms / 100);
-    const pisValor    = valorBruto * (FISCAL.aliq_pis / 100);
-    const cofinsValor = valorBruto * (FISCAL.aliq_cofins / 100);
-    const tribFed     = valorBruto * (FISCAL.aliq_fed_ibpt / 100);
-    const tribEst     = valorBruto * (FISCAL.aliq_est_ibpt / 100);
-    return { baseICMS, icmsValor, pisValor, cofinsValor, tribFed, tribEst };
+// ─── Cálculo fiscal (ISS) ─────────────────────
+function calcFiscal(v){
+  const issValor = v * (FISCAL.aliqISS/100);
+  return { issValor, baseISS: v, liquido: v - (FISCAL.tpRetISSQN===2 ? issValor : 0) };
 }
+// Competência "MM/AAAA" (ou "AAAA-MM") -> "AAAA-MM-DD" (1º dia)
+function competParaData(c){
+  const hoje=new Date().toISOString().slice(0,10);
+  if(!c) return hoje;
+  const m1=(''+c).match(/^(\d{2})\/(\d{4})$/); if(m1) return `${m1[2]}-${m1[1]}-01`;
+  const m2=(''+c).match(/^(\d{4})-(\d{2})/);   if(m2) return `${m2[1]}-${m2[2]}-01`;
+  return hoje;
+}
+const fmtR$ = v => new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v||0);
+// Converte valor BR para número entendendo "1.234,56" e "1234.56".
+function parseValorBR(s){
+  if(typeof s==='number')return s;
+  s=(s||'').toString().trim().replace(/[R$\s]/g,'');
+  if(!s)return 0;
+  if(s.includes(',')&&s.includes('.')) s=s.replace(/\./g,'').replace(',','.'); // 1.234,56 -> 1234.56
+  else if(s.includes(',')) s=s.replace(',','.');                               // 952,04   -> 952.04
+  const n=parseFloat(s); return isNaN(n)?0:n;
+}
+function fmtDoc(d){ if(!d)return'—'; const s=(d+'').replace(/\D/g,'');
+  if(s.length===11)return s.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,'$1.$2.$3-$4');
+  if(s.length===14)return s.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/,'$1.$2.$3/$4-$5'); return s; }
+function badge(s){const m={
+  pendente:'<span class="st-pendente text-[11px] font-semibold px-2 py-0.5 rounded-full">⏳ Pendente</span>',
+  emitido:'<span class="st-emitido text-[11px] font-semibold px-2 py-0.5 rounded-full">✓ Emitido</span>',
+  erro:'<span class="st-erro text-[11px] font-semibold px-2 py-0.5 rounded-full">✕ Erro</span>',
+  processando:'<span class="st-processando text-[11px] font-semibold px-2 py-0.5 rounded-full">⟳ Proc.</span>'};
+  return m[s]||`<span class="text-ink-mute text-xs">${s}</span>`;}
+function toast(msg,t='info'){const el=document.createElement('div');el.className=`toast toast-${t}`;
+  const ic={success:'check-circle',error:'circle-xmark',warn:'triangle-exclamation',info:'circle-info'}[t]||'circle-info';
+  el.innerHTML=`<i class="fas fa-${ic} mr-2"></i>${msg}`;
+  document.getElementById('toastContainer').appendChild(el);setTimeout(()=>el.remove(),5500);}
+function validarPedido(n,d,c,v){const e=[];if(!n||n.trim().length<2)e.push('Nome inválido');
+  const D=(d||'').replace(/\D/g,'');if(D.length!==11&&D.length!==14)e.push('CPF/CNPJ inválido');
+  const C=(c||'').replace(/\D/g,'');if(C.length!==8)e.push('CEP inválido');
+  const V=parseFloat((v||'0').toString().replace(',','.'));if(isNaN(V)||V<=0)e.push('Valor inválido');return e;}
+const docValido = d => {const s=(d||'').replace(/\D/g,'');return s.length===11||s.length===14;};
 
-function fmtR$(v) {
-    return new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v||0);
-}
-function fmtDoc(d) {
-    if (!d) return '—';
-    const s = (d+'').replace(/\D/g,'');
-    if (s.length===11) return s.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,'$1.$2.$3-$4');
-    if (s.length===14) return s.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/,'$1.$2.$3/$4-$5');
-    return s;
-}
-function badge(status) {
-    const m = {
-        pendente:    '<span class="st-pendente text-xs font-semibold px-2 py-0.5 rounded-full">⏳ Pendente</span>',
-        emitido:     '<span class="st-emitido text-xs font-semibold px-2 py-0.5 rounded-full">✅ Emitido</span>',
-        erro:        '<span class="st-erro text-xs font-semibold px-2 py-0.5 rounded-full">❌ Erro</span>',
-        processando: '<span class="st-processando text-xs font-semibold px-2 py-0.5 rounded-full">🔄 Proc.</span>',
-    };
-    return m[status] || `<span class="text-gray-400 text-xs">${status}</span>`;
-}
-function toast(msg, tipo='info') {
-    const el = document.createElement('div');
-    el.className = `toast toast-${tipo}`;
-    const ico = {success:'check-circle',error:'circle-xmark',warn:'triangle-exclamation',info:'circle-info'}[tipo]||'circle-info';
-    el.innerHTML = `<i class="fas fa-${ico} mr-2"></i>${msg}`;
-    document.getElementById('toastContainer').appendChild(el);
-    setTimeout(()=>el.remove(), 5000);
-}
-function validarPedido(nome,doc,cep,valor) {
-    const erros=[];
-    if (!nome||nome.trim().length<2) erros.push('Nome inválido');
-    const d=(doc||'').replace(/\D/g,'');
-    if (d.length!==11&&d.length!==14) erros.push('CPF/CNPJ inválido ('+d.length+' dígitos)');
-    const c=(cep||'').replace(/\D/g,'');
-    if (c.length!==8) erros.push('CEP inválido');
-    const v=parseFloat((valor||'0').toString().replace(',','.'));
-    if (isNaN(v)||v<=0) erros.push('Valor inválido');
-    return erros;
-}
-// Verifica se CPF tem 11 dígitos válidos (mínimo)
-function docValido(d) {
-    const s=(d||'').replace(/\D/g,'');
-    return s.length===11||s.length===14;
-}
+// ─── Toggle ambiente ──────────────────────────
+window.toggleAmbiente = function(){
+  AMBIENTE = AMBIENTE==='homologacao' ? 'producao':'homologacao';
+  const sw=document.getElementById('ambSwitch'), lb=document.getElementById('ambLabel');
+  if(AMBIENTE==='producao'){
+    sw.classList.add('on'); lb.textContent='PRODUÇÃO'; lb.className='text-[11px] font-semibold text-moss-700';
+    toast('⚠ Ambiente de PRODUÇÃO — notas terão validade fiscal real!','warn');
+  } else {
+    sw.classList.remove('on'); lb.textContent='HOMOLOGAÇÃO'; lb.className='text-[11px] font-semibold text-clay-600';
+    toast('Ambiente de homologação (testes).','info');
+  }
+};
 
-// ══════════════════════════════════════════════
-// FIREBASE LISTENER
-// ══════════════════════════════════════════════
-onSnapshot(collection(db,'vendas_nfe'), snap => {
-    document.getElementById('dotConexao').className='w-2 h-2 bg-green-400 rounded-full';
-    document.getElementById('txtConexao').textContent='Firebase OK';
-    todasVendas = snap.docs.map(d=>({id:d.id,...d.data()}));
-    renderManual(); renderFila(); renderHist(); atualizarBadge();
-}, ()=>{
-    document.getElementById('dotConexao').className='w-2 h-2 bg-red-400 rounded-full';
-    document.getElementById('txtConexao').textContent='Sem conexão';
+// ─── Firebase listener ────────────────────────
+onSnapshot(collection(db,'vendas_nfe'), snap=>{
+  document.getElementById('dotConexao').className='w-2 h-2 bg-moss-500 rounded-full';
+  document.getElementById('txtConexao').textContent='Firebase OK';
+  todasVendas=snap.docs.map(d=>({id:d.id,...d.data()}));
+  renderManual();renderFila();renderHist();atualizarBadge();
+},()=>{
+  document.getElementById('dotConexao').className='w-2 h-2 bg-rust-500 rounded-full';
+  document.getElementById('txtConexao').textContent='Sem conexão';
 });
 
-// ══════════════════════════════════════════════
-// TABS
-// ══════════════════════════════════════════════
-window.switchTab = function(tab) {
-    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.add('hidden'));
-    document.querySelectorAll('[id^="tab-"]').forEach(t=>{
-        t.className=t.className.replace('tab-active','tab-inactive');
+// ─── Tabs ─────────────────────────────────────
+window.switchTab = function(tab){
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.add('hidden'));
+  document.querySelectorAll('[id^="tab-"]').forEach(t=>{t.classList.remove('tab-on');t.classList.add('tab-off');});
+  const panel=document.getElementById(`panel-${tab}`); panel.classList.remove('hidden');
+  panel.classList.remove('fade-up'); void panel.offsetWidth; panel.classList.add('fade-up');
+  const b=document.getElementById(`tab-${tab}`); b.classList.remove('tab-off'); b.classList.add('tab-on');
+};
+
+// ─── Preview fiscal live (manual) ─────────────
+document.getElementById('m_valor').addEventListener('input',function(){
+  const v=parseFloat(this.value);
+  if(!isNaN(v)&&v>0){const f=calcFiscal(v);
+    document.getElementById('m_previewFiscal').classList.remove('hidden');
+    pv_base.textContent=fmtR$(v);pv_iss.textContent=fmtR$(f.issValor);
+    pv_liq.textContent=fmtR$(f.liquido);pv_aliq.textContent=FISCAL.aliqISS+'%';
+  } else document.getElementById('m_previewFiscal').classList.add('hidden');
+});
+
+// ─── Form manual ──────────────────────────────
+document.getElementById('nfeForm').addEventListener('submit',async e=>{
+  e.preventDefault();
+  const val=parseFloat(document.getElementById('m_valor').value); const f=calcFiscal(val);
+  try{
+    await addDoc(collection(db,'vendas_nfe'),{
+      cliente:m_cliente.value.trim(), documento:m_doc.value.replace(/\D/g,''),
+      cep:m_cep.value.replace(/\D/g,''), logradouro:m_logradouro.value.trim()||EMITENTE.logradouro,
+      numero:m_numero.value.trim()||'S/N', complemento:m_complemento.value.trim(),
+      bairro:m_bairro.value.trim()||EMITENTE.bairro, municipio:m_municipio.value.trim()||EMITENTE.municipio,
+      uf:m_uf.value, valorBruto:val, issValor:f.issValor, aliqISS:FISCAL.aliqISS,
+      descricao_produto:FISCAL.descricao,
+      status:'pendente', origem:'manual', criadoEm:serverTimestamp()
     });
-    document.getElementById(`panel-${tab}`).classList.remove('hidden');
-    const btn=document.getElementById(`tab-${tab}`);
-    btn.className=btn.className.replace('tab-inactive','tab-active');
-};
-
-// ══════════════════════════════════════════════
-// PREVIEW FISCAL LIVE (aba manual)
-// ══════════════════════════════════════════════
-document.getElementById('m_valor').addEventListener('input', function() {
-    const v=parseFloat(this.value);
-    if (!isNaN(v)&&v>0) {
-        const f=calcFiscal(v);
-        document.getElementById('m_previewFiscal').classList.remove('hidden');
-        document.getElementById('pv_base').textContent   = fmtR$(f.baseICMS);
-        document.getElementById('pv_icms').textContent   = fmtR$(f.icmsValor);
-        document.getElementById('pv_pis').textContent    = fmtR$(f.pisValor);
-        document.getElementById('pv_cofins').textContent = fmtR$(f.cofinsValor);
-        document.getElementById('pv_fed').textContent    = fmtR$(f.tribFed);
-        document.getElementById('pv_est').textContent    = fmtR$(f.tribEst);
-    } else {
-        document.getElementById('m_previewFiscal').classList.add('hidden');
-    }
+    toast('Nota salva na fila!','success');
+    document.getElementById('nfeForm').reset();
+    document.getElementById('m_previewFiscal').classList.add('hidden');
+  }catch(err){toast('Erro: '+err.message,'error');}
 });
+document.getElementById('btnEmitirManual').addEventListener('click',()=>{switchTab('fila');setTimeout(emitirTodasPendentes,400);});
+
+// ─── Renderizações ────────────────────────────
+function renderManual(){const t=document.getElementById('tabelaManual');const items=[...todasVendas].reverse().slice(0,15);
+  if(!items.length){t.innerHTML='';document.getElementById('emptyManual').classList.remove('hidden');return;}
+  document.getElementById('emptyManual').classList.add('hidden');
+  t.innerHTML=items.map(i=>`<tr class="hover:bg-paper">
+    <td class="px-3 py-2.5 font-medium text-ink max-w-32 truncate">${i.cliente}</td>
+    <td class="px-3 py-2.5 font-mono text-xs text-ink-mute">${fmtDoc(i.documento)}</td>
+    <td class="px-3 py-2.5 text-right font-semibold text-moss-700 tabnum">${fmtR$(i.valorBruto)}</td>
+    <td class="px-3 py-2.5 text-center">${badge(i.status)}</td>
+    <td class="px-3 py-2.5 text-center">${i.status==='emitido'&&i.nfseId?`<button onclick="abrirPdf('${i.nfseId}')" class="text-sky2-600 text-xs font-semibold hover:underline"><i class="fas fa-file-pdf mr-1"></i>PDF</button>`:'—'}</td>
+  </tr>`).join('');}
+
+function renderFila(){const t=document.getElementById('tabelaFila');
+  let lista=filtroAtual==='todos'?todasVendas:todasVendas.filter(i=>i.status===filtroAtual);
+  const pend=todasVendas.filter(i=>i.status==='pendente').length;
+  document.getElementById('totalFila').textContent=todasVendas.length;
+  document.getElementById('totalPendenteFila').textContent=pend;
+  if(!lista.length){t.innerHTML='';document.getElementById('emptyFila').classList.remove('hidden');return;}
+  document.getElementById('emptyFila').classList.add('hidden');
+  t.innerHTML=lista.map(i=>`<tr class="hover:bg-paper transition">
+    <td class="px-4 py-3"><input type="checkbox" class="check-item rounded accent-moss-600" data-id="${i.id}" ${i.status!=='pendente'?'disabled':''}></td>
+    <td class="px-4 py-3"><div class="font-medium text-ink">${i.cliente}</div><div class="text-[11px] text-ink-mute">${i.origem==='importacao'?'📋 Texto':i.origem==='xls'?'📊 Planilha':'✏️ Manual'}</div></td>
+    <td class="px-4 py-3 font-mono text-xs text-ink-mute">${fmtDoc(i.documento)}${!docValido(i.documento)?'<span class="ml-1 text-rust-500 text-[10px]">⚠ sem CPF</span>':''}</td>
+    <td class="px-4 py-3 text-ink-mute font-mono text-xs">${i.cep?(i.cep+'').replace(/(\d{5})(\d{3})/,'$1-$2'):'—'}</td>
+    <td class="px-4 py-3 text-right font-semibold text-moss-700 tabnum">${fmtR$(i.valorBruto)}</td>
+    <td class="px-4 py-3 text-right text-ink-mute tabnum">${fmtR$(i.issValor)}</td>
+    <td class="px-4 py-3 text-center">${badge(i.status)}</td>
+    <td class="px-4 py-3 text-center"><div class="flex items-center justify-center gap-1.5 flex-wrap">
+      ${i.status==='pendente'?`<button onclick="emitirUm('${i.id}')" class="text-sky2-600 hover:text-sky2-700 text-xs font-semibold border border-sky2-100 rounded-lg px-2 py-1 hover:bg-sky2-50"><i class="fas fa-paper-plane mr-1"></i>Emitir</button>`:''}
+      ${i.status==='emitido'&&i.nfseId?`<button onclick="abrirPdf('${i.nfseId}')" class="text-moss-700 text-xs font-semibold border border-moss-100 rounded-lg px-2 py-1 hover:bg-moss-50"><i class="fas fa-file-pdf mr-1"></i>PDF</button>`:''}
+      ${i.status==='erro'?`<button onclick="reemitir('${i.id}')" class="text-clay-600 hover:text-clay-700 text-xs font-semibold border border-clay-100 rounded-lg px-2 py-1 hover:bg-clay-50"><i class="fas fa-rotate-right mr-1"></i>Reemitir</button>`:''}
+      ${i.status==='erro'?`<span class="text-rust-500 text-xs cursor-help" title="${(i.erroMsg||'').replace(/"/g,'&quot;').substring(0,200)}"><i class="fas fa-circle-info"></i></span>`:''}
+    </div></td>
+  </tr>`).join('');}
+
+function renderHist(){const t=document.getElementById('tabelaHist');
+  let lista=todasVendas.filter(i=>i.status==='emitido'||i.status==='erro');
+  if(_busca)lista=lista.filter(i=>i.cliente.toLowerCase().includes(_busca));
+  if(!lista.length){t.innerHTML='';document.getElementById('emptyHist').classList.remove('hidden');return;}
+  document.getElementById('emptyHist').classList.add('hidden');
+  t.innerHTML=lista.map(i=>`<tr class="hover:bg-paper">
+    <td class="px-4 py-3 font-medium text-ink">${i.cliente}</td>
+    <td class="px-4 py-3 font-mono text-xs text-ink-mute">${fmtDoc(i.documento)}</td>
+    <td class="px-4 py-3 text-right font-semibold text-moss-700 tabnum">${fmtR$(i.valorBruto)}</td>
+    <td class="px-4 py-3 text-right text-ink-mute tabnum">${fmtR$(i.issValor)}</td>
+    <td class="px-4 py-3 text-center text-xs text-ink-mute">${i.competencia||'—'}</td>
+    <td class="px-4 py-3 text-center">${badge(i.status)}</td>
+    <td class="px-4 py-3 text-center">${i.status==='emitido'&&i.nfseId?`<button onclick="abrirPdf('${i.nfseId}')" class="text-sky2-600 text-xs font-semibold hover:underline"><i class="fas fa-file-pdf mr-1"></i>Ver NFS-e</button>`:'—'}</td>
+  </tr>`).join('');}
+window.buscarHist=v=>{_busca=v.toLowerCase();renderHist();};
+
+function atualizarBadge(){const p=todasVendas.filter(i=>i.status==='pendente').length;
+  document.getElementById('qtdPendente').textContent=p;
+  document.getElementById('badgeTotal').classList.toggle('hidden',p===0);
+  document.getElementById('badgeFila').textContent=p;
+  document.getElementById('badgeFila').classList.toggle('hidden',p===0);}
+
+window.filtrarFila=function(f){filtroAtual=f;
+  document.querySelectorAll('.f-btn').forEach(b=>b.className='f-btn bg-paper text-ink-soft text-xs font-semibold px-3 py-1.5 rounded-lg border border-paper-edge');
+  document.getElementById(`f-${f}`).className='f-btn bg-ink text-paper-card text-xs font-semibold px-3 py-1.5 rounded-lg';renderFila();};
 
 // ══════════════════════════════════════════════
-// FORM MANUAL
+//  MONTAR PAYLOAD DA NFS-e (leiaute Nacional - DPS)
+//  ⚠ Os campos de serviço (cTribNac, pAliq) vêm do objeto FISCAL,
+//     que deve ser confirmado com a contabilidade. Teste em
+//     homologação: a prefeitura devolve qual campo está errado.
 // ══════════════════════════════════════════════
-document.getElementById('nfeForm').addEventListener('submit', async e => {
-    e.preventDefault();
-    const val = parseFloat(document.getElementById('m_valor').value);
-    const f   = calcFiscal(val);
-    try {
-        await addDoc(collection(db,'vendas_nfe'), {
-            cliente:    document.getElementById('m_cliente').value.trim(),
-            documento:  document.getElementById('m_doc').value.replace(/\D/g,''),
-            cep:        document.getElementById('m_cep').value.replace(/\D/g,''),
-            logradouro: document.getElementById('m_logradouro').value.trim() || EMITENTE.logradouro,
-            numero:     document.getElementById('m_numero').value.trim() || 'S/N',
-            complemento:document.getElementById('m_complemento').value.trim(),
-            bairro:     document.getElementById('m_bairro').value.trim() || EMITENTE.bairro,
-            municipio:  document.getElementById('m_municipio').value.trim() || EMITENTE.municipio,
-            uf:         document.getElementById('m_uf').value,
-            valorBruto: val,
-            baseCalculo:f.baseICMS,
-            icmsValor:  f.icmsValor,
-            pisValor:   f.pisValor,
-            cofinsValor:f.cofinsValor,
-            tribFed:    f.tribFed,
-            tribEst:    f.tribEst,
-            status:     'pendente',
-            origem:     'manual',
-            criadoEm:   serverTimestamp()
-        });
-        toast('Nota salva na fila!','success');
-        document.getElementById('nfeForm').reset();
-        document.getElementById('m_previewFiscal').classList.add('hidden');
-    } catch(err) { toast('Erro: '+err.message,'error'); }
-});
+function montarDPS(data, nDPS){
+  const v2=n=>parseFloat((+n).toFixed(2));
+  const uf=(data.uf||'CE').toUpperCase();
+  const docNum=(data.documento||'').replace(/\D/g,'');
 
-// ══════════════════════════════════════════════
-// RENDER MANUAL
-// ══════════════════════════════════════════════
-function renderManual() {
-    const t  = document.getElementById('tabelaManual');
-    const items = [...todasVendas].reverse().slice(0,15);
-    if (!items.length) {
-        t.innerHTML=''; document.getElementById('emptyManual').classList.remove('hidden'); return;
+  const toma={
+    xNome:data.cliente,
+    end:{
+      xLgr:data.logradouro||EMITENTE.logradouro,
+      nro:data.numero||'S/N',
+      xBairro:data.bairro||EMITENTE.bairro,
+      cMun:EMITENTE.cMunFortaleza,   // assume tomador em Fortaleza (ajuste se for outra cidade)
+      UF:uf,
+      CEP:(data.cep||EMITENTE.cep).replace(/\D/g,'').padEnd(8,'0').substring(0,8)
     }
-    document.getElementById('emptyManual').classList.add('hidden');
-    t.innerHTML = items.map(i=>`
-        <tr class="hover:bg-gray-50">
-            <td class="px-3 py-2.5 font-medium text-gray-800 max-w-32 truncate">${i.cliente}</td>
-            <td class="px-3 py-2.5 font-mono text-xs text-gray-500">${fmtDoc(i.documento)}</td>
-            <td class="px-3 py-2.5 text-right font-semibold text-green-700">${fmtR$(i.valorBruto)}</td>
-            <td class="px-3 py-2.5 text-center">${badge(i.status)}</td>
-            <td class="px-3 py-2.5 text-center">
-                ${i.status==='emitido'&&i.pdf?`<a href="${i.pdf}" target="_blank" class="text-blue-600 text-xs font-semibold hover:underline"><i class="fas fa-file-pdf mr-1"></i>PDF</a>`:'—'}
-            </td>
-        </tr>`).join('');
-}
+  };
+  if(docNum.length===11) toma.CPF=docNum;
+  else if(docNum.length===14) toma.CNPJ=docNum;
+  if(data.email) toma.email=data.email;
 
-// Botão processar da aba manual
-document.getElementById('btnEmitirManual').addEventListener('click',()=>{
-    switchTab('fila'); setTimeout(emitirTodasPendentes,400);
-});
-
-// ══════════════════════════════════════════════
-// RENDER FILA
-// ══════════════════════════════════════════════
-function renderFila() {
-    const t = document.getElementById('tabelaFila');
-    let lista = filtroAtual==='todos' ? todasVendas : todasVendas.filter(i=>i.status===filtroAtual);
-    const pendentes = todasVendas.filter(i=>i.status==='pendente').length;
-    document.getElementById('totalFila').textContent   = todasVendas.length;
-    document.getElementById('totalPendenteFila').textContent = pendentes;
-    if (!lista.length) {
-        t.innerHTML=''; document.getElementById('emptyFila').classList.remove('hidden'); return;
-    }
-    document.getElementById('emptyFila').classList.add('hidden');
-    t.innerHTML = lista.map(i=>`
-        <tr class="hover:bg-gray-50 transition-colors">
-            <td class="px-4 py-3"><input type="checkbox" class="check-item rounded accent-blue-600" data-id="${i.id}" ${i.status!=='pendente'?'disabled':''}></td>
-            <td class="px-4 py-3">
-                <div class="font-medium text-gray-800">${i.cliente}</div>
-                <div class="text-xs text-gray-400">${i.origem==='importacao'?'📁 Importado':i.origem==='xls'?'📊 Planilha':'✏️ Manual'}</div>
-            </td>
-            <td class="px-4 py-3 font-mono text-xs text-gray-500">
-                ${fmtDoc(i.documento)}
-                ${!docValido(i.documento)?'<span class="ml-1 text-red-400 text-[10px]">⚠ sem CPF</span>':''}
-            </td>
-            <td class="px-4 py-3 text-gray-500 font-mono text-xs">${i.cep?(i.cep+'').replace(/(\d{5})(\d{3})/,'$1-$2'):'—'}</td>
-            <td class="px-4 py-3 text-right font-semibold text-green-700">${fmtR$(i.valorBruto)}</td>
-            <td class="px-4 py-3 text-right text-gray-500">${fmtR$(i.icmsValor)}</td>
-            <td class="px-4 py-3 text-center">${badge(i.status)}</td>
-            <td class="px-4 py-3 text-center">
-                <div class="flex items-center justify-center gap-1.5 flex-wrap">
-                ${i.status==='pendente'?`<button onclick="emitirUm('${i.id}')" class="text-blue-500 hover:text-blue-700 text-xs font-semibold border border-blue-200 rounded-lg px-2 py-1 hover:bg-blue-50"><i class="fas fa-paper-plane mr-1"></i>Emitir</button>`:''}
-                ${i.status==='emitido'&&i.pdf?`<a href="${i.pdf}" target="_blank" class="text-green-600 text-xs font-semibold border border-green-200 rounded-lg px-2 py-1 hover:bg-green-50"><i class="fas fa-file-pdf mr-1"></i>PDF</a>`:''}
-                ${i.status==='erro'?`<button onclick="reemitir('${i.id}')" class="text-orange-500 hover:text-orange-700 text-xs font-semibold border border-orange-200 rounded-lg px-2 py-1 hover:bg-orange-50"><i class="fas fa-rotate-right mr-1"></i>Reemitir</button>`:''}
-                ${i.status==='erro'?`<span class="text-red-400 text-xs cursor-help" title="${(i.erroMsg||'').substring(0,200)}"><i class="fas fa-circle-info"></i></span>`:''}
-                </div>
-            </td>
-        </tr>`).join('');
-}
-
-// ══════════════════════════════════════════════
-// RENDER HISTÓRICO
-// ══════════════════════════════════════════════
-let _busca='';
-function renderHist() {
-    const t = document.getElementById('tabelaHist');
-    let lista = todasVendas.filter(i=>i.status==='emitido'||i.status==='erro');
-    if (_busca) lista=lista.filter(i=>i.cliente.toLowerCase().includes(_busca));
-    if (!lista.length) {
-        t.innerHTML=''; document.getElementById('emptyHist').classList.remove('hidden'); return;
-    }
-    document.getElementById('emptyHist').classList.add('hidden');
-    t.innerHTML = lista.map(i=>`
-        <tr class="hover:bg-gray-50">
-            <td class="px-4 py-3 font-medium text-gray-800">${i.cliente}</td>
-            <td class="px-4 py-3 font-mono text-xs text-gray-500">${fmtDoc(i.documento)}</td>
-            <td class="px-4 py-3 text-right font-semibold text-green-700">${fmtR$(i.valorBruto)}</td>
-            <td class="px-4 py-3 text-right text-gray-500">${fmtR$(i.icmsValor)}</td>
-            <td class="px-4 py-3 text-right text-gray-500">${fmtR$(i.pisValor)}</td>
-            <td class="px-4 py-3 text-right text-gray-500">${fmtR$(i.cofinsValor)}</td>
-            <td class="px-4 py-3 text-center">${badge(i.status)}</td>
-            <td class="px-4 py-3 text-center">
-                ${i.pdf?`<a href="${i.pdf}" target="_blank" class="text-blue-600 text-xs font-semibold hover:underline"><i class="fas fa-file-pdf mr-1"></i>Ver NF-e</a>`:'—'}
-            </td>
-        </tr>`).join('');
-}
-window.buscarHist = function(v){ _busca=v.toLowerCase(); renderHist(); };
-
-// ══════════════════════════════════════════════
-// BADGE
-// ══════════════════════════════════════════════
-function atualizarBadge() {
-    const p=todasVendas.filter(i=>i.status==='pendente').length;
-    document.getElementById('qtdPendente').textContent=p;
-    document.getElementById('badgeTotal').classList.toggle('hidden',p===0);
-    document.getElementById('badgeFila').textContent=p;
-    document.getElementById('badgeFila').classList.toggle('hidden',p===0);
-}
-
-// ══════════════════════════════════════════════
-// FILTRO FILA
-// ══════════════════════════════════════════════
-window.filtrarFila = function(f) {
-    filtroAtual=f;
-    document.querySelectorAll('.f-btn').forEach(b=>b.className='f-btn bg-gray-100 text-gray-600 text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-gray-200');
-    document.getElementById(`f-${f}`).className='f-btn bg-gray-800 text-white text-xs font-semibold px-3 py-1.5 rounded-lg';
-    renderFila();
-};
-
-// ══════════════════════════════════════════════
-// MONTAR BODY NF-e (Focus NF-e)
-// ══════════════════════════════════════════════
-function montarNFe(data, docId) {
-    const f     = calcFiscal(data.valorBruto);
-    const uf    = (data.uf||'CE').toUpperCase();
-    const cfop  = uf==='CE' ? FISCAL.cfop : FISCAL.cfop_fora;
-
-    // CST ICMS 500 = subst trib (produtos tributados anteriormente)
-    // Para CST 500 não há campo de base/aliq/valor de ICMS próprio (já recolhido por ST)
-    const body = {
-        natureza_operacao:    "Venda de mercadoria",
-        nome_destinatario:    data.cliente,
-        cep_destinatario:     (data.cep||EMITENTE.cep_dest_padrao).replace(/\D/g,'').padEnd(8,'0').substring(0,8),
-        logradouro_destinatario: data.logradouro || "Rua Nao Informada",
-        numero_destinatario:  data.numero || "S/N",
-        bairro_destinatario:  data.bairro || "Centro",
-        municipio_destinatario: data.municipio || "Fortaleza",
-        uf_destinatario:      uf,
-        indicador_inscricao_estadual_destinatario: 9, // não contribuinte
-        items: [{
-            numero_item:              1,
-            codigo_produto:           FISCAL.codigo_produto,
-            descricao:                data.descricao_produto || FISCAL.descricao,
-            ncm:                      FISCAL.ncm,
-            cfop:                     cfop,
-            unidade_comercial:        FISCAL.unidade,
-            quantidade_comercial:     1,
-            valor_unitario_comercial: parseFloat(data.valorBruto.toFixed(2)),
-            valor_bruto:              parseFloat(data.valorBruto.toFixed(2)),
-
-            // ── ICMS CST 500 (substituição tributária — cobrado anteriormente) ──
-            icms_situacao_tributaria: "500",
-            icms_origem:              "0",
-
-            // ── PIS ──
-            pis_situacao_tributaria:  FISCAL.cst_pis,
-            pis_base_calculo:         parseFloat(data.valorBruto.toFixed(2)),
-            pis_aliquota_percentual:  FISCAL.aliq_pis,
-            pis_valor:                parseFloat(f.pisValor.toFixed(2)),
-
-            // ── COFINS ──
-            cofins_situacao_tributaria: FISCAL.cst_cofins,
-            cofins_base_calculo:      parseFloat(data.valorBruto.toFixed(2)),
-            cofins_aliquota_percentual: FISCAL.aliq_cofins,
-            cofins_valor:             parseFloat(f.cofinsValor.toFixed(2)),
-
-            // ── Tributos para IBPT ──
-            tributo_aliquota_federal:  FISCAL.aliq_fed_ibpt,
-            tributo_aliquota_estadual: FISCAL.aliq_est_ibpt,
-        }],
-        informacoes_adicionais_contribuinte:
-            `Ref.: ${data.competencia||''}. Val aprox tributos R$ ${f.tribFed.toFixed(2)} Fed (${FISCAL.aliq_fed_ibpt}%) e R$ ${f.tribEst.toFixed(2)} Est (${FISCAL.aliq_est_ibpt}%). Fonte: IBPT/empresometro.com.br 2A4940.`
-    };
-
-    // CPF ou CNPJ
-    const docNum = (data.documento||'').replace(/\D/g,'');
-    if (docNum.length===11) body.cpf_destinatario  = docNum;
-    if (docNum.length===14) body.cnpj_destinatario = docNum;
-    if (data.complemento) body.complemento_destinatario = data.complemento;
-
-    return body;
-}
-
-// ══════════════════════════════════════════════
-// CHAMAR API FOCUS NF-e
-// ══════════════════════════════════════════════
-async function emitirNFe(data, docId) {
-    const body = montarNFe(data, docId);
-    try {
-        const res = await fetch(PROXY + `${BASE_URL}?ref=${docId}`, {
-            method:  'POST',
-            headers: {
-                'Authorization': 'Basic ' + btoa(TOKEN_FOCUS+':'),
-                'Content-Type':  'application/json'
-            },
-            body: JSON.stringify(body)
-        });
-        const json = await res.json();
-        if (res.ok) return { ok:true, pdf:json.url_danfe, numero:json.numero };
-        return { ok:false, erro: JSON.stringify(json).substring(0,300) };
-    } catch(e) {
-        return { ok:false, erro: 'Erro de rede: '+e.message };
-    }
-}
-
-// ══════════════════════════════════════════════
-// EMITIR UM
-// ══════════════════════════════════════════════
-window.emitirUm = async function(id) {
-    const item = todasVendas.find(v=>v.id===id);
-    if (!item) return;
-    if (!docValido(item.documento)) {
-        return toast('Preencha o CPF/CNPJ antes de emitir.','warn');
-    }
-    await updateDoc(doc(db,'vendas_nfe',id),{status:'processando'});
-    const r = await emitirNFe(item,id);
-    if (r.ok) {
-        await updateDoc(doc(db,'vendas_nfe',id),{status:'emitido',pdf:r.pdf});
-        toast('NF-e emitida!','success');
-    } else {
-        await updateDoc(doc(db,'vendas_nfe',id),{status:'erro',erroMsg:r.erro});
-        toast('Erro: '+r.erro.substring(0,100),'error');
-    }
-};
-
-window.reemitir = async function(id) {
-    await updateDoc(doc(db,'vendas_nfe',id),{status:'pendente',erroMsg:null});
-    toast('Nota recolocada na fila.','info');
-};
-
-// ══════════════════════════════════════════════
-// EMITIR SELECIONADOS
-// ══════════════════════════════════════════════
-window.emitirSelecionados = async function() {
-    const ids=[...document.querySelectorAll('.check-item:checked')].map(el=>el.dataset.id);
-    if (!ids.length) return toast('Selecione ao menos uma nota.','warn');
-    await processarLote(ids);
-};
-
-// ══════════════════════════════════════════════
-// EMITIR TODAS PENDENTES
-// ══════════════════════════════════════════════
-window.emitirTodasPendentes = async function() {
-    const ids = todasVendas.filter(i=>i.status==='pendente'&&docValido(i.documento)).map(i=>i.id);
-    const semCpf = todasVendas.filter(i=>i.status==='pendente'&&!docValido(i.documento));
-    if (semCpf.length) toast(`⚠ ${semCpf.length} nota(s) puladas por falta de CPF/CNPJ.`,'warn');
-    if (!ids.length) return toast('Nenhuma nota pendente com CPF preenchido.','warn');
-    await processarLote(ids);
-};
-
-// ══════════════════════════════════════════════
-// PROCESSAR LOTE
-// ══════════════════════════════════════════════
-async function processarLote(ids) {
-    const total = ids.length;
-    let ok=0, err=0;
-    document.getElementById('progressoWrap').classList.remove('hidden');
-    atualizarProgresso(0,total);
-    for (let i=0;i<ids.length;i++) {
-        const id=ids[i];
-        const item=todasVendas.find(v=>v.id===id);
-        if (!item) continue;
-        await updateDoc(doc(db,'vendas_nfe',id),{status:'processando'});
-        const r=await emitirNFe(item,id);
-        if (r.ok){
-            await updateDoc(doc(db,'vendas_nfe',id),{status:'emitido',pdf:r.pdf}); ok++;
-        } else {
-            await updateDoc(doc(db,'vendas_nfe',id),{status:'erro',erroMsg:r.erro}); err++;
+  return {
+    ambiente: AMBIENTE,
+    infDPS:{
+      tpAmb: AMBIENTE==='producao'?1:2,
+      dhEmi: new Date().toISOString(),
+      serie: FISCAL.serie,
+      nDPS: nDPS,
+      dCompet: competParaData(data.competencia),
+      tpEmit: 1,
+      prest:{ CNPJ: EMITENTE.cnpj, regTrib:{ opSimpNac: FISCAL.opSimpNac, regEspTrib: 0 } },
+      toma,
+      serv:{
+        locPrest:{ cLocPrestacao: EMITENTE.cMunFortaleza },
+        cServ:{ cTribNac: FISCAL.cTribNac, xDescServ: data.descricao_produto||FISCAL.descricao }
+      },
+      valores:{
+        vServPrest:{ vServ: v2(data.valorBruto) },
+        trib:{
+          tribMun:{ tribISSQN:1, pAliq: FISCAL.aliqISS, tpRetISSQN: FISCAL.tpRetISSQN },
+          totTrib:{ indTotTrib: 0 }
         }
-        atualizarProgresso(i+1,total);
-        await new Promise(r=>setTimeout(r,300));
+      }
     }
-    document.getElementById('progressoWrap').classList.add('hidden');
-    toast(`Finalizado: ✅ ${ok} emitidas • ❌ ${err} com erro`, ok>0?'success':'error');
+  };
 }
-function atualizarProgresso(a,t) {
-    const p=t>0?Math.round((a/t)*100):0;
-    document.getElementById('progBar').style.width=p+'%';
-    document.getElementById('progTxt').textContent=`${a} / ${t}`;
+
+// Próximo número de DPS (sequencial por série) com base no maior já usado.
+function proximoNDPS(){
+  const max=todasVendas.reduce((m,v)=> (v.numeroDPS && v.numeroDPS>m ? v.numeroDPS : m), 0);
+  return max+1;
 }
 
 // ══════════════════════════════════════════════
-// CHECK ALL
+//  CHAMAR A CLOUD FUNCTION (que fala com a Nuvem Fiscal)
 // ══════════════════════════════════════════════
-window.toggleCheckAll = function(m) {
-    document.querySelectorAll('.check-item:not(:disabled)').forEach(c=>c.checked=m.checked);
+async function emitirNFSe(data, nDPS){
+  if(APP_SECRET==="TROQUE_POR_UMA_SENHA_FORTE")
+    return {ok:false,erro:"Configure FUNCTION_URL e APP_SECRET no topo do script."};
+  try{
+    const res=await fetch(FUNCTION_URL,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-App-Secret':APP_SECRET},
+      body:JSON.stringify({action:'emitir', dps:montarDPS(data,nDPS)})
+    });
+    const json=await res.json();
+    if(json.ok) return {ok:true, nfseId:json.id, numero:json.numero};
+    return {ok:false, erro:(json.erro||json.status||'Falha desconhecida')};
+  }catch(e){ return {ok:false, erro:'Erro de rede: '+e.message}; }
+}
+
+// Abrir o PDF (DANFSE) — a função busca os bytes e devolve em base64.
+window.abrirPdf=async function(nfseId){
+  toast('Buscando PDF…','info');
+  try{
+    const res=await fetch(FUNCTION_URL,{method:'POST',
+      headers:{'Content-Type':'application/json','X-App-Secret':APP_SECRET},
+      body:JSON.stringify({action:'pdf', id:nfseId})});
+    const json=await res.json();
+    if(!json.ok||!json.pdfBase64) return toast('PDF ainda indisponível.','warn');
+    const bin=atob(json.pdfBase64); const arr=new Uint8Array(bin.length);
+    for(let i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);
+    const url=URL.createObjectURL(new Blob([arr],{type:'application/pdf'}));
+    window.open(url,'_blank');
+  }catch(e){ toast('Erro ao buscar PDF: '+e.message,'error'); }
 };
+
+// ─── Emitir um ────────────────────────────────
+window.emitirUm=async function(id){
+  const item=todasVendas.find(v=>v.id===id); if(!item)return;
+  if(!docValido(item.documento)) return toast('Preencha o CPF/CNPJ antes de emitir.','warn');
+  const nDPS=proximoNDPS();
+  await updateDoc(doc(db,'vendas_nfe',id),{status:'processando',numeroDPS:nDPS});
+  const r=await emitirNFSe(item,nDPS);
+  if(r.ok){await updateDoc(doc(db,'vendas_nfe',id),{status:'emitido',nfseId:r.nfseId||null,numeroNF:r.numero||null});toast('NFS-e autorizada!','success');}
+  else{await updateDoc(doc(db,'vendas_nfe',id),{status:'erro',erroMsg:r.erro});toast('Erro: '+(r.erro||'').substring(0,90),'error');}
+};
+window.reemitir=async function(id){await updateDoc(doc(db,'vendas_nfe',id),{status:'pendente',erroMsg:null});toast('Nota recolocada na fila.','info');};
+
+
+window.emitirSelecionados=async function(){
+  const ids=[...document.querySelectorAll('.check-item:checked')].map(el=>el.dataset.id);
+  if(!ids.length)return toast('Selecione ao menos uma nota.','warn'); await processarLote(ids);};
+
+window.emitirTodasPendentes=async function(){
+  const ids=todasVendas.filter(i=>i.status==='pendente'&&docValido(i.documento)).map(i=>i.id);
+  const semCpf=todasVendas.filter(i=>i.status==='pendente'&&!docValido(i.documento));
+  if(semCpf.length)toast(`⚠ ${semCpf.length} nota(s) puladas por falta de CPF.`,'warn');
+  if(!ids.length)return toast('Nenhuma pendente com CPF preenchido.','warn'); await processarLote(ids);};
+
+async function processarLote(ids){
+  if(AMBIENTE==='producao' && !confirm(`Você está em PRODUÇÃO. Emitir ${ids.length} NFS-e com VALIDADE FISCAL REAL?`)) return;
+  const total=ids.length; let ok=0,err=0;
+  let nDPS=proximoNDPS();
+  document.getElementById('progressoWrap').classList.remove('hidden'); atualizarProgresso(0,total);
+  for(let i=0;i<ids.length;i++){
+    const item=todasVendas.find(v=>v.id===ids[i]); if(!item)continue;
+    await updateDoc(doc(db,'vendas_nfe',ids[i]),{status:'processando',numeroDPS:nDPS});
+    const r=await emitirNFSe(item,nDPS);
+    if(r.ok){await updateDoc(doc(db,'vendas_nfe',ids[i]),{status:'emitido',nfseId:r.nfseId||null,numeroNF:r.numero||null});ok++;}
+    else{await updateDoc(doc(db,'vendas_nfe',ids[i]),{status:'erro',erroMsg:r.erro});err++;}
+    nDPS++;
+    atualizarProgresso(i+1,total); await new Promise(r=>setTimeout(r,400));
+  }
+  document.getElementById('progressoWrap').classList.add('hidden');
+  toast(`Finalizado: ✓ ${ok} emitidas · ✕ ${err} com erro`, ok>0?'success':'error');
+}
+function atualizarProgresso(a,t){const p=t>0?Math.round(a/t*100):0;
+  document.getElementById('progBar').style.width=p+'%';document.getElementById('progTxt').textContent=`${a} / ${t}`;}
+window.toggleCheckAll=m=>document.querySelectorAll('.check-item:not(:disabled)').forEach(c=>c.checked=m.checked);
+
+window.exportarCSV=function(){
+  const h=['Cliente','Documento','CEP','Valor','ISS','Aliq ISS','Competencia','Status','NumeroNFSe','idNuvemFiscal'];
+  const rows=todasVendas.map(i=>[`"${i.cliente}"`,i.documento,i.cep,(i.valorBruto||0).toFixed(2),(i.issValor||0).toFixed(2),(i.aliqISS||'')+'',i.competencia||'',i.status,i.numeroNF||'',i.nfseId||'']);
+  const csv=[h,...rows].map(r=>r.join(';')).join('\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));
+  a.download=`crinutrir_nfe_${new Date().toISOString().slice(0,10)}.csv`;a.click();toast('CSV exportado!','success');};
 
 // ══════════════════════════════════════════════
-// EXPORTAR CSV
+//  IMPORTAÇÃO XLS
 // ══════════════════════════════════════════════
-window.exportarCSV = function() {
-    const h=['Cliente','Documento','CEP','Valor','BaseICMS','ICMS','PIS','COFINS','Status','PDF'];
-    const rows=todasVendas.map(i=>[
-        `"${i.cliente}"`,i.documento,i.cep,
-        (i.valorBruto||0).toFixed(2),(i.baseCalculo||0).toFixed(2),
-        (i.icmsValor||0).toFixed(2),(i.pisValor||0).toFixed(2),(i.cofinsValor||0).toFixed(2),
-        i.status,i.pdf||''
-    ]);
-    const csv=[h,...rows].map(r=>r.join(';')).join('\n');
-    const a=document.createElement('a');
-    a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));
-    a.download=`crinutrir_nfe_${new Date().toISOString().slice(0,10)}.csv`;
-    a.click(); toast('CSV exportado!','success');
-};
+window.lerXLS=function(input){const file=input.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=function(e){try{
+    const wb=XLSX.read(e.target.result,{type:'binary',cellDates:true});
+    const raw=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{raw:false,defval:''});
+    pedidosXLS=raw.map((row,idx)=>{
+      const sacado=row['Sacado']||row['Nome']||row['Cliente']||'';
+      const valor=parseValorBR(row['Valor receb.']||row['Valor']||'0');
+      const situNF=row['Situação NFSe']||row['Situação NFS']||'';
+      const comp=row['Competência']||row['Competencia']||'';
+      const descProd=row['Descrição']||row['Descricao']||FISCAL.descricao;
+      const docNum=(row['CPF']||row['CNPJ']||row['Documento']||'').replace(/\D/g,'');
+      return {linha:idx+2,cliente:sacado.trim(),documento:docNum,cep:EMITENTE.cep,
+        logradouro:EMITENTE.logradouro,numero:EMITENTE.numero,bairro:EMITENTE.bairro,
+        municipio:EMITENTE.municipio,uf:'CE',valorBruto:valor,descricao_produto:descProd,
+        competencia:comp,situNF,origem:'xls',semCpf:!docNum||docNum.length<11};
+    }).filter(p=>{if(!p.situNF)return true;const s=p.situNF.toLowerCase();return s.includes('não emitida')||s.includes('nao emitida')||p.situNF.trim()==='';})
+      .filter(p=>p.cliente&&p.valorBruto>0);
+    renderPreviewXLS();
+  }catch(err){toast('Erro ao ler arquivo: '+err.message,'error');}};
+  reader.readAsBinaryString(file);};
 
-// ═══════════════════════════════════════════════════════════
-// IMPORTAÇÃO XLS
-// ═══════════════════════════════════════════════════════════
+const dzXLS=document.getElementById('dropZoneXLS');
+dzXLS.addEventListener('dragover',e=>{e.preventDefault();dzXLS.classList.add('drag-active');});
+dzXLS.addEventListener('dragleave',()=>dzXLS.classList.remove('drag-active'));
+dzXLS.addEventListener('drop',e=>{e.preventDefault();dzXLS.classList.remove('drag-active');
+  const file=e.dataTransfer.files[0];if(file){const fi=document.getElementById('fileXLS');fi.files=e.dataTransfer.files;lerXLS(fi);}});
 
-window.lerXLS = function(input) {
-    const file = input.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        try {
-            const wb  = XLSX.read(e.target.result, {type:'binary', cellDates:true});
-            const sh  = wb.Sheets[wb.SheetNames[0]];
-            const raw = XLSX.utils.sheet_to_json(sh, {raw:false, defval:''});
-
-            // Detectar mapeamento de colunas (compatível com "CRI Recebido")
-            pedidosXLS = raw.map((row, idx) => {
-                const sacado  = row['Sacado']            || row['Nome']       || row['Cliente']  || '';
-                const tipo    = row['Tipo']              || 'PF';
-                const valor   = parseFloat((row['Valor receb.'] || row['Valor'] || '0').toString().replace(',','.')) || 0;
-                const situNF  = row['Situação NFSe']     || row['Situação NFS'] || '';
-                const comp    = row['Competência']       || row['Competencia'] || '';
-                const descProd= row['Descrição']         || row['Descricao']   || FISCAL.descricao;
-                const titular = row['Titular']           || '';
-                // CPF não vem na planilha — marcar como pendente
-                const docNum  = (row['CPF']||row['CNPJ']||row['Documento']||'').replace(/\D/g,'');
-
-                return {
-                    linha:      idx+2,
-                    cliente:    sacado.trim(),
-                    documento:  docNum,
-                    cep:        EMITENTE.cep_dest_padrao, // padrão Fortaleza/CE
-                    logradouro: EMITENTE.logradouro,
-                    numero:     EMITENTE.numero,
-                    bairro:     EMITENTE.bairro,
-                    municipio:  EMITENTE.municipio,
-                    uf:         'CE',
-                    valorBruto: valor,
-                    descricao_produto: descProd,
-                    competencia: comp,
-                    situNF:     situNF,
-                    origem:     'xls',
-                    semCpf:     !docNum || docNum.length < 11
-                };
-            }).filter(p => {
-                // Filtrar apenas "Não emitida" se existir esse campo, ou todas
-                if (!p.situNF) return true;
-                return p.situNF.toLowerCase().includes('não emitida') || p.situNF.toLowerCase().includes('nao emitida') || p.situNF.trim()==='';
-            }).filter(p => p.cliente && p.valorBruto > 0);
-
-            renderPreviewXLS();
-        } catch(err) {
-            toast('Erro ao ler arquivo: '+err.message,'error');
-        }
-    };
-    reader.readAsBinaryString(file);
-};
-
-// Drag & drop na zona XLS
-const dzXLS = document.getElementById('dropZoneXLS');
-dzXLS.addEventListener('dragover', e=>{ e.preventDefault(); dzXLS.classList.add('drag-active'); });
-dzXLS.addEventListener('dragleave', ()=>dzXLS.classList.remove('drag-active'));
-dzXLS.addEventListener('drop', e=>{
-    e.preventDefault(); dzXLS.classList.remove('drag-active');
-    const file=e.dataTransfer.files[0];
-    if (file) { const fi=document.getElementById('fileXLS'); fi.files=e.dataTransfer.files; lerXLS(fi); }
-});
-
-function renderPreviewXLS() {
-    const ok     = pedidosXLS.filter(p=>p.valorBruto>0&&p.cliente).length;
-    const semCpf = pedidosXLS.filter(p=>p.semCpf).length;
-    const err    = pedidosXLS.filter(p=>!p.cliente||p.valorBruto<=0).length;
-
-    document.getElementById('xlsVazio').classList.add('hidden');
-    document.getElementById('xlsPreviewWrap').classList.remove('hidden');
-    document.getElementById('resumoXLS').classList.remove('hidden');
-    document.getElementById('xls_ok').textContent      = ok;
-    document.getElementById('xls_sem_cpf').textContent = semCpf;
-    document.getElementById('xls_err').textContent     = err;
-
-    const tbody = document.getElementById('xlsPreviewBody');
-    tbody.innerHTML = pedidosXLS.map(p=>{
-        const f = calcFiscal(p.valorBruto);
-        return `<tr class="${p.semCpf?'bg-amber-50 border-l-2 border-amber-300':'preview-ok'}">
-            <td class="px-2 py-2 text-gray-400">${p.linha}</td>
-            <td class="px-2 py-2 font-medium text-gray-800">${p.cliente}</td>
-            <td class="px-2 py-2 text-center text-xs">${p.descricao_produto.substring(0,20)}</td>
-            <td class="px-2 py-2 text-right font-semibold text-green-700">${fmtR$(p.valorBruto)}</td>
-            <td class="px-2 py-2 text-center font-mono text-xs">
-                ${p.semCpf
-                    ? '<span class="bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full text-[10px] font-semibold">⚠ Informar</span>'
-                    : `<span class="text-green-600 font-mono">${fmtDoc(p.documento)}</span>`}
-            </td>
-            <td class="px-2 py-2 text-center text-xs text-gray-400">${p.competencia}</td>
-            <td class="px-2 py-2 text-center">
-                <span class="bg-amber-100 text-amber-700 text-[10px] px-1.5 py-0.5 rounded-full font-semibold">⏳ Pendente</span>
-            </td>
-        </tr>`;
-    }).join('');
-
-    // Totais fiscais
-    const validos = pedidosXLS.filter(p=>p.valorBruto>0);
-    const totV = validos.reduce((a,b)=>a+b.valorBruto,0);
-    const totF = validos.reduce((a,b)=>a+calcFiscal(b.valorBruto).icmsValor,0);
-    const totP = validos.reduce((a,b)=>a+calcFiscal(b.valorBruto).pisValor,0);
-    const totC = validos.reduce((a,b)=>a+calcFiscal(b.valorBruto).cofinsValor,0);
-    document.getElementById('xlsTotalValor').textContent = fmtR$(totV);
-    document.getElementById('xlsTotalICMS').textContent  = fmtR$(totF);
-    document.getElementById('xlsTotalPIS').textContent   = fmtR$(totP);
-    document.getElementById('xlsTotalCOFINS').textContent= fmtR$(totC);
-
-    // Aviso CPF
-    if (semCpf>0) {
-        document.getElementById('avisoCpf').classList.remove('hidden');
-    }
-
-    toast(`${ok} pedido(s) lido(s) da planilha. ${semCpf} sem CPF.`, 'info');
+function renderPreviewXLS(){
+  const ok=pedidosXLS.filter(p=>p.valorBruto>0&&p.cliente).length;
+  const semCpf=pedidosXLS.filter(p=>p.semCpf).length;
+  const err=pedidosXLS.filter(p=>!p.cliente||p.valorBruto<=0).length;
+  document.getElementById('xlsVazio').classList.add('hidden');
+  document.getElementById('xlsPreviewWrap').classList.remove('hidden');
+  document.getElementById('resumoXLS').classList.remove('hidden');
+  xls_ok.textContent=ok;xls_sem_cpf.textContent=semCpf;xls_err.textContent=err;
+  document.getElementById('xlsPreviewBody').innerHTML=pedidosXLS.map(p=>`
+    <tr class="${p.semCpf?'bg-clay-50 border-l-2 border-clay-300':'preview-ok'}">
+      <td class="px-2 py-2 text-ink-mute">${p.linha}</td>
+      <td class="px-2 py-2 font-medium text-ink">${p.cliente}</td>
+      <td class="px-2 py-2 text-center text-xs text-ink-mute">${(p.descricao_produto||'').substring(0,18)}</td>
+      <td class="px-2 py-2 text-right font-semibold text-moss-700 tabnum">${fmtR$(p.valorBruto)}</td>
+      <td class="px-2 py-2 text-center font-mono text-xs">${p.semCpf?'<span class="bg-clay-100 text-clay-700 px-1.5 py-0.5 rounded-full text-[10px] font-semibold">⚠ Informar</span>':`<span class="text-moss-600">${fmtDoc(p.documento)}</span>`}</td>
+      <td class="px-2 py-2 text-center text-xs text-ink-mute">${p.competencia}</td>
+      <td class="px-2 py-2 text-center"><span class="st-pendente text-[10px] px-1.5 py-0.5 rounded-full font-semibold">⏳</span></td>
+    </tr>`).join('');
+  const validos=pedidosXLS.filter(p=>p.valorBruto>0);
+  xlsTotalValor.textContent=fmtR$(validos.reduce((a,b)=>a+b.valorBruto,0));
+  xlsTotalISS.textContent=fmtR$(validos.reduce((a,b)=>a+calcFiscal(b.valorBruto).issValor,0));
+  if(semCpf>0)document.getElementById('avisoCpf').classList.remove('hidden');
+  toast(`${ok} pedido(s) lido(s). ${semCpf} sem CPF.`,'info');
 }
 
-// ─── Salvar pedidos XLS no Firebase ──────────────────
-async function salvarPedidosXLS(pedidos) {
-    const ids = [];
-    for (const p of pedidos) {
-        if (!p.cliente||p.valorBruto<=0) continue;
-        const f = calcFiscal(p.valorBruto);
-        const ref = await addDoc(collection(db,'vendas_nfe'), {
-            cliente:    p.cliente,
-            documento:  p.documento||'',
-            cep:        p.cep||EMITENTE.cep_dest_padrao,
-            logradouro: p.logradouro||EMITENTE.logradouro,
-            numero:     p.numero||EMITENTE.numero,
-            bairro:     p.bairro||EMITENTE.bairro,
-            municipio:  p.municipio||EMITENTE.municipio,
-            uf:         p.uf||'CE',
-            valorBruto: p.valorBruto,
-            baseCalculo:f.baseICMS,
-            icmsValor:  f.icmsValor,
-            pisValor:   f.pisValor,
-            cofinsValor:f.cofinsValor,
-            tribFed:    f.tribFed,
-            tribEst:    f.tribEst,
-            descricao_produto: p.descricao_produto||FISCAL.descricao,
-            competencia:p.competencia||'',
-            status:     'pendente',
-            origem:     'xls',
-            criadoEm:   serverTimestamp()
-        });
-        ids.push(ref.id);
-    }
-    return ids;
-}
+async function salvarPedidosXLS(pedidos){const ids=[];
+  for(const p of pedidos){if(!p.cliente||p.valorBruto<=0)continue;const f=calcFiscal(p.valorBruto);
+    const ref=await addDoc(collection(db,'vendas_nfe'),{cliente:p.cliente,documento:p.documento||'',
+      cep:p.cep||EMITENTE.cep,logradouro:p.logradouro||EMITENTE.logradouro,numero:p.numero||EMITENTE.numero,
+      bairro:p.bairro||EMITENTE.bairro,municipio:p.municipio||EMITENTE.municipio,uf:p.uf||'CE',
+      valorBruto:p.valorBruto,issValor:f.issValor,aliqISS:FISCAL.aliqISS,descricao_produto:p.descricao_produto||FISCAL.descricao,
+      competencia:p.competencia||'',status:'pendente',origem:'xls',criadoEm:serverTimestamp()});
+    ids.push(ref.id);} return ids;}
 
-window.importarXLSFila = async function() {
-    if (!pedidosXLS.length) return toast('Nenhum pedido para importar.','warn');
-    const semCpf = pedidosXLS.filter(p=>p.semCpf);
-    if (semCpf.length>0) {
-        abrirModalCpf(semCpf, async (pedidosComCpf) => {
-            // Merge CPFs de volta
-            pedidosComCpf.forEach(p=>{ const orig=pedidosXLS.find(x=>x.linha===p.linha); if(orig) orig.documento=p.documento; });
-            await salvarPedidosXLS(pedidosXLS);
-            toast(`${pedidosXLS.length} nota(s) importadas para a fila!`,'success');
-            pedidosXLS=[]; renderPreviewXLS_reset();
-            switchTab('fila');
-        });
-        return;
-    }
-    const ids = await salvarPedidosXLS(pedidosXLS);
-    toast(`${ids.length} nota(s) importadas para a fila!`,'success');
-    pedidosXLS=[]; renderPreviewXLS_reset();
-    switchTab('fila');
-};
+window.importarXLSFila=async function(){
+  if(!pedidosXLS.length)return toast('Nenhum pedido para importar.','warn');
+  const semCpf=pedidosXLS.filter(p=>p.semCpf);
+  if(semCpf.length>0){abrirModalCpf(semCpf,async pc=>{pc.forEach(p=>{const o=pedidosXLS.find(x=>x.linha===p.linha);if(o)o.documento=p.documento;});
+    await salvarPedidosXLS(pedidosXLS);toast(`${pedidosXLS.length} nota(s) importadas!`,'success');pedidosXLS=[];resetXLS();switchTab('fila');});return;}
+  const ids=await salvarPedidosXLS(pedidosXLS);toast(`${ids.length} nota(s) importadas!`,'success');pedidosXLS=[];resetXLS();switchTab('fila');};
 
-window.importarXLSEmitir = async function() {
-    if (!pedidosXLS.length) return toast('Nenhum pedido para importar.','warn');
-    const semCpf = pedidosXLS.filter(p=>p.semCpf);
-    if (semCpf.length>0) {
-        abrirModalCpf(semCpf, async (pedidosComCpf) => {
-            pedidosComCpf.forEach(p=>{ const orig=pedidosXLS.find(x=>x.linha===p.linha); if(orig) orig.documento=p.documento; });
-            const ids = await salvarPedidosXLS(pedidosXLS);
-            pedidosXLS=[]; renderPreviewXLS_reset();
-            switchTab('fila');
-            toast('Iniciando emissão…','info');
-            await processarLote(ids);
-        });
-        return;
-    }
-    const ids = await salvarPedidosXLS(pedidosXLS);
-    pedidosXLS=[]; renderPreviewXLS_reset();
-    switchTab('fila');
-    await processarLote(ids);
-};
+window.importarXLSEmitir=async function(){
+  if(!pedidosXLS.length)return toast('Nenhum pedido para importar.','warn');
+  const semCpf=pedidosXLS.filter(p=>p.semCpf);
+  if(semCpf.length>0){abrirModalCpf(semCpf,async pc=>{pc.forEach(p=>{const o=pedidosXLS.find(x=>x.linha===p.linha);if(o)o.documento=p.documento;});
+    const ids=await salvarPedidosXLS(pedidosXLS);pedidosXLS=[];resetXLS();switchTab('fila');toast('Iniciando emissão…','info');await processarLote(ids);});return;}
+  const ids=await salvarPedidosXLS(pedidosXLS);pedidosXLS=[];resetXLS();switchTab('fila');await processarLote(ids);};
 
-function renderPreviewXLS_reset() {
-    document.getElementById('xlsPreviewWrap').classList.add('hidden');
-    document.getElementById('xlsVazio').classList.remove('hidden');
-    document.getElementById('resumoXLS').classList.add('hidden');
-    document.getElementById('avisoCpf').classList.add('hidden');
-    document.getElementById('fileXLS').value='';
-}
+function resetXLS(){document.getElementById('xlsPreviewWrap').classList.add('hidden');
+  document.getElementById('xlsVazio').classList.remove('hidden');document.getElementById('resumoXLS').classList.add('hidden');
+  document.getElementById('avisoCpf').classList.add('hidden');document.getElementById('fileXLS').value='';}
 
-// ─── Modelo XLS para download ──────────────────────────
-window.downloadModeloXLS = function() {
-    const dados = [
-        ['Sacado','Tipo','Valor receb.','Descrição','Competência','Situação NFSe','CPF','CEP','Logradouro','Bairro','Município','UF','Número'],
-        ['João da Silva','PF','952.04','Plano de Refeições - 1ª/12','02/2026','Não emitida','12345678901','60135215','Rua Francisco Holanda','Dionísio Torres','Fortaleza','CE','609'],
-        ['Maria Santos','PF','401.13','Plano de Refeições - 2ª/12','02/2026','Não emitida','98765432100','60135215','Rua Francisco Holanda','Dionísio Torres','Fortaleza','CE','609'],
-    ];
-    const ws = XLSX.utils.aoa_to_sheet(dados);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Pedidos');
-    XLSX.writeFile(wb, 'modelo_pedidos_crinutrir.xlsx');
-    toast('Modelo XLSX baixado!','success');
-};
+window.downloadModeloXLS=function(){
+  const dados=[['Sacado','Tipo','Valor receb.','Descrição','Competência','Situação NFSe','CPF','CEP','Logradouro','Bairro','Município','UF','Número'],
+    ['João da Silva','PF','952.04','Plano de Refeições - 1ª/12','02/2026','Não emitida','12345678901','60135215','Rua Francisco Holanda','Dionísio Torres','Fortaleza','CE','609'],
+    ['Maria Santos','PF','401.13','Plano de Refeições - 2ª/12','02/2026','Não emitida','98765432100','60135215','Rua Francisco Holanda','Dionísio Torres','Fortaleza','CE','609']];
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(dados),'Pedidos');
+  XLSX.writeFile(wb,'modelo_pedidos_crinutrir.xlsx');toast('Modelo XLSX baixado!','success');};
 
-// ═══════════════════════════════════════════════════════════
-// MODAL CPF
-// ═══════════════════════════════════════════════════════════
+// ─── Modal CPF ────────────────────────────────
+function abrirModalCpf(pedidos,callback){modalCallback=callback;
+  document.getElementById('modalCpfLista').innerHTML=pedidos.map(p=>`
+    <div class="bg-paper rounded-2xl p-3 border border-paper-edge">
+      <div class="flex items-center justify-between mb-1.5"><span class="font-semibold text-ink text-sm">${p.cliente}</span><span class="text-xs text-ink-mute tabnum">${fmtR$(p.valorBruto)}</span></div>
+      <div class="flex gap-2 items-center">
+        <input type="text" placeholder="CPF ou CNPJ (só números)" maxlength="18" data-linha="${p.linha}" class="cpf-modal-input flex-1 bg-paper-card border border-paper-edge rounded-lg px-3 py-1.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-moss-300" oninput="validarCpfModal(this)">
+        <span class="cpf-ok hidden text-moss-500 text-sm"><i class="fas fa-check-circle"></i></span>
+      </div>
+    </div>`).join('');
+  document.getElementById('modalCpf').classList.remove('hidden');}
+window.validarCpfModal=function(el){const d=el.value.replace(/\D/g,'');const ok=d.length===11||d.length===14;
+  el.nextElementSibling.classList.toggle('hidden',!ok);el.classList.toggle('border-moss-400',ok);el.classList.toggle('border-rust-300',!ok&&d.length>0);};
+window.fecharModalCpf=function(){document.getElementById('modalCpf').classList.add('hidden');modalCallback=null;};
+window.confirmarModalCpf=function(){const inputs=document.querySelectorAll('.cpf-modal-input');
+  const resultado=[...inputs].map(el=>({linha:parseInt(el.dataset.linha),documento:el.value.replace(/\D/g,'')}));
+  document.getElementById('modalCpf').classList.add('hidden');if(modalCallback)modalCallback(resultado);};
 
-function abrirModalCpf(pedidos, callback) {
-    modalCallback = callback;
-    const lista = document.getElementById('modalCpfLista');
-    lista.innerHTML = pedidos.map(p=>`
-        <div class="bg-gray-50 rounded-xl p-3 border border-gray-200">
-            <div class="flex items-center justify-between mb-1.5">
-                <span class="font-semibold text-gray-800 text-sm">${p.cliente}</span>
-                <span class="text-xs text-gray-400">${fmtR$(p.valorBruto)}</span>
-            </div>
-            <div class="flex gap-2 items-center">
-                <input type="text" placeholder="CPF ou CNPJ (só números)" maxlength="18"
-                    data-linha="${p.linha}"
-                    class="cpf-modal-input flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-300"
-                    oninput="validarCpfModal(this)">
-                <span class="cpf-ok hidden text-green-500 text-sm"><i class="fas fa-check-circle"></i></span>
-            </div>
-        </div>`).join('');
-    document.getElementById('modalCpf').classList.remove('hidden');
-}
-
-window.validarCpfModal = function(el) {
-    const d=el.value.replace(/\D/g,'');
-    const ok = d.length===11||d.length===14;
-    el.nextElementSibling.classList.toggle('hidden',!ok);
-    el.classList.toggle('border-green-400',ok);
-    el.classList.toggle('border-red-300',!ok&&d.length>0);
-};
-
-window.fecharModalCpf = function() {
-    document.getElementById('modalCpf').classList.add('hidden');
-    modalCallback=null;
-};
-
-window.confirmarModalCpf = function() {
-    const inputs = document.querySelectorAll('.cpf-modal-input');
-    const resultado = [...inputs].map(el=>({
-        linha: parseInt(el.dataset.linha),
-        documento: el.value.replace(/\D/g,'')
-    }));
-    document.getElementById('modalCpf').classList.add('hidden');
-    if (modalCallback) modalCallback(resultado);
-};
-
-// ═══════════════════════════════════════════════════════════
-// IMPORTAÇÃO TEXTO / BLOCO DE NOTAS
-// ═══════════════════════════════════════════════════════════
-
-window.carregarExemploTexto = function() {
-    document.getElementById('txtPedidos').value =
-        `João da Silva\t12345678901\t60135215\t952.04\tRua Francisco Holanda\tDionísio Torres\tFortaleza\tCE\t609
+// ══════════════════════════════════════════════
+//  IMPORTAÇÃO TEXTO
+// ══════════════════════════════════════════════
+window.carregarExemploTexto=function(){document.getElementById('txtPedidos').value=
+`João da Silva\t12345678901\t60135215\t952.04\tRua Francisco Holanda\tDionísio Torres\tFortaleza\tCE\t609
 Maria Santos\t98765432100\t60135215\t401.13\tRua Francisco Holanda\tDionísio Torres\tFortaleza\tCE\t609
-Pedro Erro\t999\t000\tABC`;
-};
+Pedro Erro\t999\t000\tABC`;};
 
-window.downloadModeloTxt = function() {
-    const t=`NOME_CLIENTE\tCPF_CNPJ\tCEP\tVALOR\tLOGRADOURO\tBAIRRO\tMUNICIPIO\tUF\tNUMERO\tCOMPLEMENTO
+window.downloadModeloTxt=function(){const t=`NOME_CLIENTE\tCPF_CNPJ\tCEP\tVALOR\tLOGRADOURO\tBAIRRO\tMUNICIPIO\tUF\tNUMERO\tCOMPLEMENTO
 João da Silva\t12345678901\t60135215\t952.04\tRua Francisco Holanda\tDionísio Torres\tFortaleza\tCE\t609\t
 Maria Santos\t98765432100\t60135215\t401.13\tRua Francisco Holanda\tDionísio Torres\tFortaleza\tCE\t609\t`;
-    const a=document.createElement('a');
-    a.href=URL.createObjectURL(new Blob([t],{type:'text/plain;charset=utf-8;'}));
-    a.download='modelo_pedidos_crinutrir.txt'; a.click();
-    toast('Modelo TXT baixado!','success');
-};
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([t],{type:'text/plain;charset=utf-8;'}));a.download='modelo_pedidos_crinutrir.txt';a.click();toast('Modelo TXT baixado!','success');};
 
-window.limparTexto = function() {
-    document.getElementById('txtPedidos').value='';
-    document.getElementById('txtPreviewWrap').classList.add('hidden');
-    document.getElementById('txtVazio').classList.remove('hidden');
-    document.getElementById('resumoTxt').classList.add('hidden');
-    pedidosTxt=[];
-};
+window.limparTexto=function(){document.getElementById('txtPedidos').value='';
+  document.getElementById('txtPreviewWrap').classList.add('hidden');document.getElementById('txtVazio').classList.remove('hidden');
+  document.getElementById('resumoTxt').classList.add('hidden');pedidosTxt=[];};
 
-window.handleDropTxt = function(e) {
-    e.preventDefault();
-    document.getElementById('dropZoneTxt').classList.remove('drag-active');
-    const file=e.dataTransfer.files[0];
-    if (!file) return;
-    const reader=new FileReader();
-    reader.onload=ev=>{ document.getElementById('txtPedidos').value=ev.target.result; toast('Arquivo carregado.','info'); };
-    reader.readAsText(file,'UTF-8');
-};
+window.handleDropTxt=function(e){e.preventDefault();document.getElementById('dropZoneTxt').classList.remove('drag-active');
+  const file=e.dataTransfer.files[0];if(!file)return;const reader=new FileReader();
+  reader.onload=ev=>{document.getElementById('txtPedidos').value=ev.target.result;toast('Arquivo carregado.','info');};reader.readAsText(file,'UTF-8');};
 
-window.processarTexto = function() {
-    const raw=document.getElementById('txtPedidos').value.trim();
-    if (!raw) return toast('Cole os dados antes de analisar.','warn');
-    const linhas=raw.split('\n').filter(l=>l.trim());
-    pedidosTxt=[];
-    for (let i=0;i<linhas.length;i++) {
-        const sep=linhas[i].includes('\t')?'\t':';';
-        const cols=linhas[i].split(sep).map(c=>c.trim().replace(/['"]/g,''));
-        if (i===0&&(cols[0].toUpperCase().includes('NOME')||cols[0].toUpperCase().includes('CLIENTE')||cols[0].toUpperCase().includes('SACADO'))) continue;
-        const val=parseFloat((cols[3]||'0').replace(',','.'));
-        const erros=validarPedido(cols[0],cols[1],cols[2],cols[3]);
-        pedidosTxt.push({
-            linha:i+1, cliente:cols[0]||'', documento:(cols[1]||'').replace(/\D/g,''),
-            cep:(cols[2]||'').replace(/\D/g,''), valorBruto:isNaN(val)?0:val,
-            logradouro:cols[4]||EMITENTE.logradouro, bairro:cols[5]||EMITENTE.bairro,
-            municipio:cols[6]||EMITENTE.municipio, uf:cols[7]||'CE',
-            numero:cols[8]||EMITENTE.numero, complemento:cols[9]||'',
-            erros, valido:erros.length===0
-        });
-    }
-    renderPreviewTxt();
-};
+window.processarTexto=function(){const raw=document.getElementById('txtPedidos').value.trim();
+  if(!raw)return toast('Cole os dados antes de analisar.','warn');
+  const linhas=raw.split('\n').filter(l=>l.trim());pedidosTxt=[];
+  for(let i=0;i<linhas.length;i++){const sep=linhas[i].includes('\t')?'\t':';';
+    const cols=linhas[i].split(sep).map(c=>c.trim().replace(/['"]/g,''));
+    if(i===0&&(cols[0].toUpperCase().includes('NOME')||cols[0].toUpperCase().includes('CLIENTE')||cols[0].toUpperCase().includes('SACADO')))continue;
+    const val=parseValorBR(cols[3]||'0');const erros=validarPedido(cols[0],cols[1],cols[2],cols[3]);
+    pedidosTxt.push({linha:i+1,cliente:cols[0]||'',documento:(cols[1]||'').replace(/\D/g,''),cep:(cols[2]||'').replace(/\D/g,''),
+      valorBruto:val,logradouro:cols[4]||EMITENTE.logradouro,bairro:cols[5]||EMITENTE.bairro,
+      municipio:cols[6]||EMITENTE.municipio,uf:cols[7]||'CE',numero:cols[8]||EMITENTE.numero,complemento:cols[9]||'',erros,valido:erros.length===0});}
+  renderPreviewTxt();};
 
-function renderPreviewTxt() {
-    const ok=pedidosTxt.filter(p=>p.valido).length;
-    const err=pedidosTxt.filter(p=>!p.valido).length;
-    document.getElementById('txtVazio').classList.add('hidden');
-    document.getElementById('txtPreviewWrap').classList.remove('hidden');
-    document.getElementById('resumoTxt').classList.remove('hidden');
-    document.getElementById('txt_ok').textContent=ok;
-    document.getElementById('txt_err').textContent=err;
+function renderPreviewTxt(){const ok=pedidosTxt.filter(p=>p.valido).length;const err=pedidosTxt.filter(p=>!p.valido).length;
+  document.getElementById('txtVazio').classList.add('hidden');document.getElementById('txtPreviewWrap').classList.remove('hidden');
+  document.getElementById('resumoTxt').classList.remove('hidden');txt_ok.textContent=ok;txt_err.textContent=err;
+  document.getElementById('txtPreviewBody').innerHTML=pedidosTxt.map(p=>`<tr class="${p.valido?'preview-ok':'preview-err'}">
+    <td class="px-2 py-2 text-ink-mute">${p.linha}</td>
+    <td class="px-2 py-2"><div class="font-medium text-ink">${p.cliente||'<i class="text-rust-500">vazio</i>'}</div>${!p.valido?`<div class="text-rust-500 text-[10px]">${p.erros.join(', ')}</div>`:''}</td>
+    <td class="px-2 py-2 font-mono text-ink-mute">${fmtDoc(p.documento)}</td>
+    <td class="px-2 py-2 text-ink-mute font-mono">${p.cep?(p.cep+'').replace(/(\d{5})(\d{3})/,'$1-$2'):'—'}</td>
+    <td class="px-2 py-2 text-right font-semibold tabnum ${p.valido?'text-moss-700':'text-rust-500'}">${fmtR$(p.valorBruto)}</td>
+    <td class="px-2 py-2 text-center">${p.valido?'<span class="st-emitido text-[10px] px-1.5 py-0.5 rounded-full font-semibold">✓ OK</span>':'<span class="st-erro text-[10px] px-1.5 py-0.5 rounded-full font-semibold">✕ Erro</span>'}</td>
+  </tr>`).join('');
+  const validos=pedidosTxt.filter(p=>p.valido);
+  txtTotalValor.textContent=fmtR$(validos.reduce((a,b)=>a+b.valorBruto,0));
+  txtTotalISS.textContent=fmtR$(validos.reduce((a,b)=>a+calcFiscal(b.valorBruto).issValor,0));}
 
-    document.getElementById('txtPreviewBody').innerHTML = pedidosTxt.map(p=>`
-        <tr class="${p.valido?'preview-ok':'preview-err'}">
-            <td class="px-2 py-2 text-gray-400">${p.linha}</td>
-            <td class="px-2 py-2">
-                <div class="font-medium text-gray-800">${p.cliente||'<i class="text-red-400">vazio</i>'}</div>
-                ${!p.valido?`<div class="text-red-500 text-[10px]">${p.erros.join(', ')}</div>`:''}
-            </td>
-            <td class="px-2 py-2 font-mono text-gray-500">${fmtDoc(p.documento)}</td>
-            <td class="px-2 py-2 text-gray-500">${p.cep?(p.cep+'').replace(/(\d{5})(\d{3})/,'$1-$2'):'—'}</td>
-            <td class="px-2 py-2 text-right font-semibold ${p.valido?'text-green-700':'text-red-400'}">${fmtR$(p.valorBruto)}</td>
-            <td class="px-2 py-2 text-center">
-                ${p.valido
-                    ?'<span class="bg-green-100 text-green-700 text-[10px] px-1.5 py-0.5 rounded-full font-semibold">✓ OK</span>'
-                    :'<span class="bg-red-100 text-red-600 text-[10px] px-1.5 py-0.5 rounded-full font-semibold">✗ Erro</span>'}
-            </td>
-        </tr>`).join('');
+async function salvarPedidosTxt(pedidos){const ids=[];
+  for(const p of pedidos.filter(x=>x.valido)){const f=calcFiscal(p.valorBruto);
+    const ref=await addDoc(collection(db,'vendas_nfe'),{cliente:p.cliente,documento:p.documento,cep:p.cep,
+      logradouro:p.logradouro,numero:p.numero,bairro:p.bairro,municipio:p.municipio,uf:p.uf,complemento:p.complemento,
+      valorBruto:p.valorBruto,issValor:f.issValor,aliqISS:FISCAL.aliqISS,descricao_produto:FISCAL.descricao,
+      status:'pendente',origem:'importacao',criadoEm:serverTimestamp()});ids.push(ref.id);}
+  return ids;}
 
-    const validos=pedidosTxt.filter(p=>p.valido);
-    document.getElementById('txtTotalValor').textContent=fmtR$(validos.reduce((a,b)=>a+b.valorBruto,0));
-    document.getElementById('txtTotalICMS').textContent =fmtR$(validos.reduce((a,b)=>a+calcFiscal(b.valorBruto).icmsValor,0));
-}
+window.importarTextoFila=async function(){const validos=pedidosTxt.filter(p=>p.valido);
+  if(!validos.length)return toast('Nenhum pedido válido.','warn');const ids=await salvarPedidosTxt(pedidosTxt);
+  toast(`${ids.length} nota(s) importadas!`,'success');limparTexto();switchTab('fila');};
 
-async function salvarPedidosTxt(pedidos) {
-    const ids=[];
-    for (const p of pedidos.filter(x=>x.valido)) {
-        const f=calcFiscal(p.valorBruto);
-        const ref=await addDoc(collection(db,'vendas_nfe'),{
-            cliente:p.cliente, documento:p.documento, cep:p.cep,
-            logradouro:p.logradouro, numero:p.numero, bairro:p.bairro,
-            municipio:p.municipio, uf:p.uf, complemento:p.complemento,
-            valorBruto:p.valorBruto, baseCalculo:f.baseICMS,
-            icmsValor:f.icmsValor, pisValor:f.pisValor, cofinsValor:f.cofinsValor,
-            tribFed:f.tribFed, tribEst:f.tribEst,
-            status:'pendente', origem:'importacao', criadoEm:serverTimestamp()
-        });
-        ids.push(ref.id);
-    }
-    return ids;
-}
+window.importarTextoEmitir=async function(){const validos=pedidosTxt.filter(p=>p.valido);
+  if(!validos.length)return toast('Nenhum pedido válido.','warn');const ids=await salvarPedidosTxt(pedidosTxt);
+  limparTexto();switchTab('fila');await processarLote(ids);};
 
-window.importarTextoFila = async function() {
-    const validos=pedidosTxt.filter(p=>p.valido);
-    if (!validos.length) return toast('Nenhum pedido válido.','warn');
-    const ids=await salvarPedidosTxt(pedidosTxt);
-    toast(`${ids.length} nota(s) importadas!`,'success');
-    limparTexto(); switchTab('fila');
-};
-
-window.importarTextoEmitir = async function() {
-    const validos=pedidosTxt.filter(p=>p.valido);
-    if (!validos.length) return toast('Nenhum pedido válido.','warn');
-    const ids=await salvarPedidosTxt(pedidosTxt);
-    limparTexto(); switchTab('fila');
-    await processarLote(ids);
-};
-
+// ─── Refletir parâmetros fiscais nos rótulos ──
+(function initFiscalLabels(){
+  const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+  set('fx_ctrib',FISCAL.cTribNac); set('fx_iss',FISCAL.aliqISS+'%');
+  const a=document.getElementById('pv_aliq'); if(a)a.textContent=FISCAL.aliqISS+'%';
+})();
 </script>
 </body>
 </html>
